@@ -80,6 +80,9 @@ export default function ActiveTimersBar({ active, todos, onStop }) {
               className={`active-timers-bar__item${item.running ? ' is-running' : ''}`}
             >
               <span className="active-timers-bar__title">{item.title}</span>
+              <span className="active-timers-bar__status" aria-label={item.running ? '运行中' : '已暂停'}>
+                {item.running ? '运行中' : '已暂停'}
+              </span>
               <span className="active-timers-bar__track">{TRACK_LABELS[item.track]}</span>
               <span className="active-timers-bar__time">{formatDuration(item.elapsedMs)}</span>
               {onStop && (

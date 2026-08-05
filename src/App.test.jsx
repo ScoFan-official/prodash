@@ -14,13 +14,22 @@ describe('App 外壳', () => {
     expect(screen.getByPlaceholderText(/添加待办/)).toBeInTheDocument()
   })
 
-  test('切换到番茄钟显示敬请期待', async () => {
+  test('不再显示番茄钟 Tab', () => {
+    render(<App />)
+    expect(screen.queryByRole('tab', { name: '番茄钟' })).not.toBeInTheDocument()
+  })
+
+  test('笔记/记账占位页可切换并显示敬请期待', async () => {
     render(<App />)
     const user = userEvent.setup()
-    await user.click(screen.getByRole('tab', { name: '番茄钟' }))
+    await user.click(screen.getByRole('tab', { name: '笔记' }))
+    expect(screen.getByRole('heading', { name: '笔记' })).toBeInTheDocument()
     expect(screen.getByText('敬请期待')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '番茄钟' })).toBeInTheDocument()
     expect(screen.queryByPlaceholderText(/添加待办/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: '记账' }))
+    expect(screen.getByRole('heading', { name: '记账' })).toBeInTheDocument()
+    expect(screen.getByText('敬请期待')).toBeInTheDocument()
   })
 
   test('切换回待办后数据仍在', async () => {

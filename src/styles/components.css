@@ -435,6 +435,99 @@
 }
 
 /* =========================================================
+   待办双轨计时控制
+   ========================================================= */
+
+.task-timer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.timer-track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.timer-track-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 2.8em;
+}
+
+.timer-track-status {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.timer-track-status.is-running {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.timer-track-status.is-paused {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+}
+
+.task-timer-controls button {
+  flex: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.task-timer-controls button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.task-timer-controls button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.task-timer-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.task-timer-controls button[aria-label*="停止"] {
+  color: var(--danger);
+}
+
+.task-timer-controls button[aria-label*="停止"]:hover:not(:disabled) {
+  background: var(--danger-bg);
+  border-color: rgba(255, 107, 107, 0.35);
+}
+
+.timer-track-elapsed {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 4em;
+  text-align: right;
+}
+
+/* =========================================================
    顶部活动计时条
    ========================================================= */
 
@@ -501,8 +594,9 @@
   padding: 8px 0;
   border-top: 1px solid var(--border);
   background: var(--surface-elevated);
-  max-height: 320px;
+  max-height: min(60vh, 320px);
   overflow-y: auto;
+  position: relative;
 }
 
 .active-timers-bar__item {
@@ -534,6 +628,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+}
+
+.active-timers-bar__status {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+}
+
+.active-timers-bar__item.is-running .active-timers-bar__status {
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .active-timers-bar__track {
@@ -902,5 +1011,25 @@
 
   .placeholder-view {
     padding: 56px 24px;
+  }
+
+  .task-timer-controls {
+    gap: 6px;
+  }
+
+  .timer-track {
+    flex: 1 1 100%;
+  }
+
+  .timer-track-elapsed {
+    margin-left: auto;
+  }
+
+  .active-timers-bar__item {
+    flex-wrap: wrap;
+  }
+
+  .active-timers-bar__time {
+    margin-left: auto;
   }
 }

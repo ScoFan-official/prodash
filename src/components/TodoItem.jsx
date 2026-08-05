@@ -25,6 +25,7 @@ export default function TodoItem({
         onPause={(track) => timerCallbacks.pause(todo.id, track)}
         onResume={(track) => timerCallbacks.resume(todo.id, track)}
         onStop={(track) => timerCallbacks.stop(todo.id, track)}
+        disabled={todo.done}
       />
       <button type="button" onClick={() => onDelete(todo.id)}>
         删除

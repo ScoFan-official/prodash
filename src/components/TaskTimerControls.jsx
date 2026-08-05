@@ -22,19 +22,32 @@ export default function TaskTimerControls({
   onPause,
   onResume,
   onStop,
+  disabled = false,
 }) {
   return (
-    <div className="task-timer-controls">
+    <div className="task-timer-controls" aria-label="双轨计时控制">
       {TRACKS.map((track) => {
         const entry = summary?.[track] ?? { active: false, running: false, elapsedMs: 0 }
+        const statusClass = entry.running
+          ? 'is-running'
+          : entry.active
+            ? 'is-paused'
+            : 'is-idle'
+        const statusText = entry.running ? '运行中' : entry.active ? '已暂停' : ''
         return (
           <div key={track} className="timer-track" data-track={track}>
             <span className="timer-track-label">{TRACK_LABELS[track]}</span>
+            {statusText && (
+              <span className={`timer-track-status ${statusClass}`} aria-label={`${TRACK_LABELS[track]}${statusText}`}>
+                {statusText}
+              </span>
+            )}
             {!entry.active && (
               <button
                 type="button"
                 onClick={() => onStart(track)}
                 aria-label={actionName('开始', track)}
+                disabled={disabled}
               >
                 开始
               </button>
@@ -45,6 +58,7 @@ export default function TaskTimerControls({
                   type="button"
                   onClick={() => onResume(track)}
                   aria-label={actionName('继续', track)}
+                  disabled={disabled}
                 >
                   继续
                 </button>
@@ -52,6 +66,7 @@ export default function TaskTimerControls({
                   type="button"
                   onClick={() => onStop(track)}
                   aria-label={actionName('停止', track)}
+                  disabled={disabled}
                 >
                   停止
                 </button>
@@ -63,6 +78,7 @@ export default function TaskTimerControls({
                   type="button"
                   onClick={() => onPause(track)}
                   aria-label={actionName('暂停', track)}
+                  disabled={disabled}
                 >
                   暂停
                 </button>
@@ -70,6 +86,7 @@ export default function TaskTimerControls({
                   type="button"
                   onClick={() => onStop(track)}
                   aria-label={actionName('停止', track)}
+                  disabled={disabled}
                 >
                   停止
                 </button>

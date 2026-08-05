@@ -4,7 +4,6 @@ import PlaceholderView from './components/PlaceholderView'
 
 const TABS = [
   { key: 'todo', label: '待办' },
-  { key: 'timer', label: '番茄钟' },
   { key: 'notes', label: '笔记' },
   { key: 'expenses', label: '记账' },
 ]
