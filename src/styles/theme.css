@@ -1,22 +1,80 @@
 :root {
-  --bg: #0f1115;
-  --surface: #1a1d23;
-  --surface-hover: #23272f;
-  --text: #e6e9ef;
-  --text-muted: #8b93a3;
-  --border: #2a2f3a;
-  --accent: #6ea8fe;
-  --danger: #f87171;
-  --done: #4ade80;
+  --bg: #0b0d12;
+  --surface: #14171f;
+  --surface-elevated: #1a1e28;
+  --surface-hover: #232837;
+  --surface-active: #2b303d;
+
+  --text: #f0f2f7;
+  --text-muted: #8f98aa;
+
+  --border: #2c313e;
+  --border-strong: #3b4252;
+
+  --accent: #7fb8ff;
+  --accent-hover: #a8d0ff;
+  --accent-bg: #1b2738;
+
+  --danger: #ff6b6b;
+  --danger-bg: #35151a;
+
+  --done: #66e6b0;
+  --done-bg: #132a22;
+
+  --q1: #ff8f7f;
+  --q1-bg: #3a1e1a;
+  --q2: #6ee7c3;
+  --q2-bg: #142a24;
+  --q3: #f9c35d;
+  --q3-bg: #2d2211;
+  --q4: #c7b8ff;
+  --q4-bg: #24203a;
+
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --radius: 14px;
+  --radius-sm: 8px;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 15% 0%, rgba(127, 184, 255, 0.08) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 0%, rgba(255, 143, 127, 0.05) 0%, transparent 40%);
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+li {
+  margin: 0;
+  padding: 0;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: none;
 }
