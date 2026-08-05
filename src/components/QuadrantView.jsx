@@ -1,7 +1,13 @@
 import { QUADRANT_ORDER, QUADRANTS, getQuadrantKey } from '../lib/quadrants'
 import QuadrantCell from './QuadrantCell'
 
-export default function QuadrantView({ todos, onToggle, onDelete }) {
+export default function QuadrantView({
+  todos,
+  onToggle,
+  onDelete,
+  timerCallbacks,
+  getTodoSummary,
+}) {
   return (
     <div className="quadrant-view">
       {QUADRANT_ORDER.map((key) => {
@@ -17,6 +23,8 @@ export default function QuadrantView({ todos, onToggle, onDelete }) {
             todos={cellTodos}
             onToggle={onToggle}
             onDelete={onDelete}
+            timerCallbacks={timerCallbacks}
+            getTodoSummary={getTodoSummary}
           />
         )
       })}

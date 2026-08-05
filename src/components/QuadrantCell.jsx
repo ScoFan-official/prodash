@@ -7,6 +7,8 @@ export default function QuadrantCell({
   todos,
   onToggle,
   onDelete,
+  timerCallbacks,
+  getTodoSummary,
 }) {
   return (
     <section className="quadrant-cell" data-testid={`quadrant-${quadrantKey}`}>
@@ -20,7 +22,14 @@ export default function QuadrantCell({
       ) : (
         <ul>
           {todos.map((todo) => (
-            <TodoItem key={todo.id} todo={todo} onToggle={onToggle} onDelete={onDelete} />
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              summary={getTodoSummary(todo.id)}
+              onToggle={onToggle}
+              onDelete={onDelete}
+              timerCallbacks={timerCallbacks}
+            />
           ))}
         </ul>
       )}

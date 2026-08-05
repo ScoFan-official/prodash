@@ -1,6 +1,13 @@
 import { getQuadrantKey, QUADRANTS } from '../lib/quadrants'
+import TaskTimerControls from './TaskTimerControls'
 
-export default function TodoItem({ todo, onToggle, onDelete }) {
+export default function TodoItem({
+  todo,
+  summary,
+  onToggle,
+  onDelete,
+  timerCallbacks,
+}) {
   const quadrant = QUADRANTS[getQuadrantKey(todo.important, todo.urgent)]
   return (
     <li className={`todo-item${todo.done ? ' is-done' : ''}`}>
@@ -12,6 +19,13 @@ export default function TodoItem({ todo, onToggle, onDelete }) {
       />
       <span className="todo-text">{todo.text}</span>
       <span className="todo-quadrant-tag">{quadrant.title}</span>
+      <TaskTimerControls
+        summary={summary}
+        onStart={(track) => timerCallbacks.start(todo.id, track)}
+        onPause={(track) => timerCallbacks.pause(todo.id, track)}
+        onResume={(track) => timerCallbacks.resume(todo.id, track)}
+        onStop={(track) => timerCallbacks.stop(todo.id, track)}
+      />
       <button type="button" onClick={() => onDelete(todo.id)}>
         删除
       </button>

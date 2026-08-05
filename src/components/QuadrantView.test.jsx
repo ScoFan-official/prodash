@@ -69,4 +69,24 @@ describe('四象限视图', () => {
     await user.click(within(cell).getByRole('button', { name: '删除' }))
     expect(within(cell).queryByText('格子内删除')).not.toBeInTheDocument()
   })
+
+  test('四象限视图中显示双轨计时控制', async () => {
+    render(<TodoView />)
+    await addTodo('格子内计时')
+    await switchToQuadrant()
+    const cell = screen.getByTestId('quadrant-not-important-not-urgent')
+    expect(within(cell).getByRole('button', { name: '开始人工计时' })).toBeInTheDocument()
+    expect(within(cell).getByRole('button', { name: '开始Agent计时' })).toBeInTheDocument()
+  })
+
+  test('四象限视图中运行中的待办删除被拒绝并提示', async () => {
+    render(<TodoView />)
+    const user = await addTodo('格子内保护')
+    await switchToQuadrant()
+    const cell = screen.getByTestId('quadrant-not-important-not-urgent')
+    await user.click(within(cell).getByRole('button', { name: '开始人工计时' }))
+    await user.click(within(cell).getByRole('button', { name: '删除' }))
+    expect(within(cell).getByText('格子内保护')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+  })
 })
