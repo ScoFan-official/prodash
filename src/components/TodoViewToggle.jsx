@@ -7,6 +7,9 @@ export default function TodoViewToggle({ view, onViewChange }) {
       <button type="button" role="tab" aria-selected={view === 'quadrant'} onClick={() => onViewChange('quadrant')}>
         四象限
       </button>
+      <button type="button" role="tab" aria-selected={view === 'stats'} onClick={() => onViewChange('stats')}>
+        统计
+      </button>
     </div>
   )
 }

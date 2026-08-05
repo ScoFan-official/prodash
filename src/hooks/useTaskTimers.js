@@ -238,5 +238,7 @@ export function useTaskTimers() {
     stopForTodo,
     getTodoSummary,
     hasRunning,
+    active: state.active,
+    records: state.records,
   }
 }

@@ -5,6 +5,8 @@ import TodoViewToggle from './TodoViewToggle'
 import TodoInput from './TodoInput'
 import TodoList from './TodoList'
 import QuadrantView from './QuadrantView'
+import ActiveTimersBar from './ActiveTimersBar'
+import TimeStatsView from './TimeStatsView'
 
 const STORAGE_KEY = 'prodash.todos.v1'
 
@@ -65,6 +67,11 @@ export default function TodoView() {
 
   return (
     <section className="todo-view">
+      <ActiveTimersBar
+        active={timers.active}
+        todos={todos}
+        onStop={timerCallbacks.stop}
+      />
       <TodoViewToggle view={view} onViewChange={setView} />
       <TodoInput onAdd={addTodo} />
       {saveError && (
@@ -85,7 +92,7 @@ export default function TodoView() {
           timerCallbacks={timerCallbacks}
           getTodoSummary={timers.getTodoSummary}
         />
-      ) : (
+      ) : view === 'quadrant' ? (
         <QuadrantView
           todos={todos}
           onToggle={toggleTodo}
@@ -93,6 +100,8 @@ export default function TodoView() {
           timerCallbacks={timerCallbacks}
           getTodoSummary={timers.getTodoSummary}
         />
+      ) : (
+        <TimeStatsView records={timers.records} todos={todos} />
       )}
     </section>
   )
