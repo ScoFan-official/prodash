@@ -111,6 +111,17 @@ describe('TodoView 计时双轨控制（集成）', () => {
     expect(screen.queryByText('受保护任务')).not.toBeInTheDocument()
   })
 
+  test('暂停后删除成功且无阻止提示', () => {
+    render(<TodoView />)
+    addTodo('暂停可删')
+    fireEvent.click(screen.getByRole('button', { name: '开始人工计时' }))
+    fireEvent.click(screen.getByRole('button', { name: '暂停人工计时' }))
+    expect(screen.getByRole('button', { name: '继续人工计时' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '删除' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('暂停可删')).not.toBeInTheDocument()
+  })
+
   test('勾选完成自动停止全部计时，恢复未完成不自动恢复', () => {
     render(<TodoView />)
     addTodo('完成即停')

@@ -221,9 +221,12 @@ export function useTaskTimers() {
   }
 
   // 删除保护语义：仅运行中的计时返回 true，暂停中的计时不阻止删除。
-  function hasRunning(todoId) {
-    return hasRunningTimerForTodo(state, todoId)
-  }
+  // 用 useCallback 包装，依赖 state.active（仅领域变更时换引用，tick 不换），
+  // 供调用方（如 TodoView 的删除拦截清除 effect）作为稳定依赖使用。
+  const hasRunning = useCallback(
+    (todoId) => hasRunningTimerForTodo(state, todoId),
+    [state.active],
+  )
 
   return {
     loadError: state.loadError,
