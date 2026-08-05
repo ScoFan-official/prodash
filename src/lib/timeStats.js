@@ -53,15 +53,54 @@ export function formatPercent(part, total) {
 }
 
 /**
+ * 将活动计时条目合成为「尚未停止的记录」，供统计复用 records 的按 segment 日期聚合逻辑。
+ *
+ * 固化语义与 stopTimer 一致：segments = 已固化段 + 当前运行段（仅运行中）；
+ * 运行中时长按 now 计算，系统时间前拨时钳制为 0；暂停中条目只贡献已固化段。
+ */
+function activeEntryToCurrentRecord(entry, now) {
+  if (!entry || typeof entry !== 'object') return null
+  const hasRunningSegment = entry.running === true && typeof entry.startedAt === 'number'
+  const closed = hasRunningSegment
+    ? {
+        startedAt: entry.startedAt,
+        endedAt: now,
+        durationMs: clampNonNegative(now - entry.startedAt),
+      }
+    : null
+  const baseSegments = Array.isArray(entry.segments) ? entry.segments : []
+  const segments = closed ? [...baseSegments, closed] : baseSegments
+  return {
+    id: entry.id,
+    todoId: entry.todoId,
+    track: entry.track,
+    startedAt: entry.sessionStartedAt,
+    endedAt: now,
+    durationMs:
+      (typeof entry.accumulatedMs === 'number' ? entry.accumulatedMs : 0) +
+      (closed ? closed.durationMs : 0),
+    segments,
+  }
+}
+
+/**
  * 汇总指定日期的工时数据。
  *
+ * state 为 timeStore 状态对象 { active, records }（与 getReportData 一致）。
+ * 运行中/暂停中的 active 条目按「截至 now 停止」合成暂态记录后一并参与聚合，
+ * 因此计时运行中统计也能反映截至当前时刻的人工/Agent 时长。
  * 按 segment 的 startedAt 本地日期归属，不跨日拆分；找不到待办时使用「已删除任务」。
  * 返回：
  *   date, totalHumanMs, totalAgentMs, totalMs,
  *   byTask（按任务聚合，按总时长降序）,
  *   byCategory（按四象限分类聚合，按总时长降序）
  */
-export function aggregateToday(records, todos, now = Date.now()) {
+export function aggregateToday(state, todos, now = Date.now()) {
+  const { active = {}, records = [] } = state ?? {}
+  const currentRecords = Object.values(active)
+    .map((entry) => activeEntryToCurrentRecord(entry, now))
+    .filter(Boolean)
+  const allRecords = [...records, ...currentRecords]
   const dateKey = toDateKey(now)
   const todoById = new Map((todos ?? []).map((todo) => [todo.id, todo]))
   const taskMap = new Map()
@@ -69,7 +108,7 @@ export function aggregateToday(records, todos, now = Date.now()) {
   let totalHumanMs = 0
   let totalAgentMs = 0
 
-  for (const record of records ?? []) {
+  for (const record of allRecords ?? []) {
     if (!record || typeof record !== 'object' || !Array.isArray(record.segments)) {
       continue
     }

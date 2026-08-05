@@ -101,7 +101,11 @@ export default function TodoView() {
           getTodoSummary={timers.getTodoSummary}
         />
       ) : (
-        <TimeStatsView records={timers.records} todos={todos} />
+        <TimeStatsView
+          active={timers.active}
+          records={timers.records}
+          todos={todos}
+        />
       )}
     </section>
   )

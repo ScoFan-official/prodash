@@ -58,8 +58,8 @@ function PieChart({ data, total }) {
   )
 }
 
-export default function TimeStatsView({ records, todos }) {
-  const stats = aggregateToday(records, todos, Date.now())
+export default function TimeStatsView({ active, records, todos }) {
+  const stats = aggregateToday({ active, records }, todos, Date.now())
   const { date, totalHumanMs, totalAgentMs, totalMs, byTask, byCategory } = stats
 
   return (
