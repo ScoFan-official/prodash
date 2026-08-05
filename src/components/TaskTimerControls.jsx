@@ -66,7 +66,6 @@ export default function TaskTimerControls({
                   type="button"
                   onClick={() => onStop(track)}
                   aria-label={actionName('停止', track)}
-                  disabled={disabled}
                 >
                   停止
                 </button>
@@ -78,7 +77,6 @@ export default function TaskTimerControls({
                   type="button"
                   onClick={() => onPause(track)}
                   aria-label={actionName('暂停', track)}
-                  disabled={disabled}
                 >
                   暂停
                 </button>
@@ -86,7 +84,6 @@ export default function TaskTimerControls({
                   type="button"
                   onClick={() => onStop(track)}
                   aria-label={actionName('停止', track)}
-                  disabled={disabled}
                 >
                   停止
                 </button>

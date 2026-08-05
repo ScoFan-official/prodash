@@ -95,4 +95,24 @@ describe('TaskTimerControls 双轨控制', () => {
     await user.click(screen.getByRole('button', { name: '停止Agent计时' }))
     expect(onStop).toHaveBeenCalledWith('agent')
   })
+
+  test('disabled 时只禁用开始/继续，保留暂停和停止', () => {
+    render(
+      <TaskTimerControls
+        summary={summaryOf({
+          human: { active: true, running: true, elapsedMs: 60000 },
+          agent: { active: true, running: false, elapsedMs: 30000 },
+        })}
+        onStart={vi.fn()}
+        onPause={vi.fn()}
+        onResume={vi.fn()}
+        onStop={vi.fn()}
+        disabled
+      />
+    )
+    expect(screen.getByRole('button', { name: '暂停人工计时' })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: '停止人工计时' })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: '继续Agent计时' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '停止Agent计时' })).not.toBeDisabled()
+  })
 })
