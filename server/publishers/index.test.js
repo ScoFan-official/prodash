@@ -92,6 +92,8 @@ describe('DwsCliPublisher', () => {
       'doc', 'update',
       '--node', 'old-node',
       '--content-file', expect.any(String),
+      '--mode', 'overwrite',
+      '--yes',
       '--format', 'json',
     ]);
     // lenient 解析：前缀文案 + node_id/doc_url

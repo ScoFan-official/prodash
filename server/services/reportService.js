@@ -67,13 +67,32 @@ export async function buildReportSource(repos, { date, includeDeleted = false })
   return { date, includeDeleted, completedTodos, pendingTodos, totalHumanMs, totalAgentMs };
 }
 
+/** 毫秒 → 可读用时文本（供 LLM 直接引用，避免它自行换算毫秒值出错）。 */
+export function formatDuration(ms) {
+  const totalMinutes = Math.round(Number(ms || 0) / 60000);
+  if (totalMinutes <= 0) return '不足 1 分钟';
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h > 0 && m > 0) return `${h} 小时 ${m} 分钟`;
+  if (h > 0) return `${h} 小时`;
+  return `${m} 分钟`;
+}
+
 /** 组装 Dify workflow inputs。 */
 function buildDifyInputs(source, extraWork) {
   const e = { ...EMPTY_EXTRA, ...(extraWork || {}) };
+  const withTime = (t) => ({
+    ...t,
+    // 预格式化为可读文本，LLM 直接引用，不自行换算
+    humanTime: formatDuration(t.humanMs),
+    agentTime: formatDuration(t.agentMs),
+    // 合计用时（人工+Agent），LLM 单值引用即可，避免它在双轨间挑选出错
+    totalTime: formatDuration((t.humanMs || 0) + (t.agentMs || 0)),
+  });
   return {
     report_date: source.date,
-    completed_tasks: JSON.stringify(source.completedTodos),
-    pending_tasks: JSON.stringify(source.pendingTodos),
+    completed_tasks: JSON.stringify(source.completedTodos.map(withTime)),
+    pending_tasks: JSON.stringify(source.pendingTodos.map(withTime)),
     extra_work: JSON.stringify({
       temporaryWork: e.temporaryWork ?? '',
       meetings: e.meetings ?? '',
@@ -83,6 +102,8 @@ function buildDifyInputs(source, extraWork) {
     time_summary: JSON.stringify({
       totalHumanMs: source.totalHumanMs,
       totalAgentMs: source.totalAgentMs,
+      totalHumanTime: formatDuration(source.totalHumanMs),
+      totalAgentTime: formatDuration(source.totalAgentMs),
     }),
   };
 }
@@ -108,8 +129,10 @@ export function createReportService({ difyClient, publisher }) {
         date,
         content: report.content,
         status: 'published',
-        docUrl: url,
-        docNodeId: nodeId,
+        // dws doc update 不返回 URL（只返回 nodeId）：新值为空时保留已有 docUrl/docNodeId，
+        // 避免覆盖发布后把真实链接清成 null
+        docUrl: url ?? report.docUrl,
+        docNodeId: nodeId ?? report.docNodeId,
         includeDeleted: report.includeDeleted,
         version: report.version,
       });

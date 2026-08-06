@@ -109,12 +109,12 @@ npm run dev
 | 变量名 | 类型 | 说明 | 示例（序列化前的值） |
 |--------|------|------|----------------------|
 | `report_date` | string | 日报归属日，`YYYY-MM-DD` | `2026-08-06` |
-| `completed_tasks` | string | JSON 数组字符串：当日完成的任务（见下方数组项字段） | `[{"id":1,"title":"写周报","important":true,"urgent":false,"humanMs":1800000,"agentMs":0}]` |
-| `pending_tasks` | string | JSON 数组字符串：当天新建且仍在进行中的任务（结构同上） | `[{"id":2,"title":"联调接口","important":false,"urgent":true,"humanMs":0,"agentMs":300000}]` |
+| `completed_tasks` | string | JSON 数组字符串：当日完成的任务（见下方数组项字段） | `[{"id":1,"title":"写周报","important":true,"urgent":false,"humanMs":2400000,"agentMs":1800000,"humanTime":"40 分钟","agentTime":"30 分钟","totalTime":"1 小时 10 分钟"}]` |
+| `pending_tasks` | string | JSON 数组字符串：当天新建且仍在进行中的任务（结构同上） | `[{"id":2,"title":"联调接口","important":false,"urgent":true,"humanMs":900000,"agentMs":5400000,"humanTime":"15 分钟","agentTime":"1 小时 30 分钟","totalTime":"1 小时 45 分钟"}]` |
 | `extra_work` | string | JSON 对象字符串：补充内容 | `{"temporaryWork":"临时会议","meetings":"产品评审"}` |
 | `risks` | string | 问题与风险（纯文本） | `暂无` |
 | `tomorrow_plan` | string | 明日计划（纯文本） | `开始 v1.1.0 开发` |
-| `time_summary` | string | JSON 对象字符串：当日双轨总时长（毫秒） | `{"totalHumanMs":3600000,"totalAgentMs":600000}` |
+| `time_summary` | string | JSON 对象字符串：当日双轨总时长（毫秒 + 预格式化文本） | `{"totalHumanMs":3600000,"totalAgentMs":5400000,"totalHumanTime":"1 小时","totalAgentTime":"1 小时 30 分钟"}` |
 
 `completed_tasks` / `pending_tasks` 数组项字段：
 
@@ -123,20 +123,25 @@ npm run dev
 | `id` | number | 任务 ID |
 | `title` | string | 任务标题（软删除任务为「已删除任务」或原名） |
 | `important` / `urgent` | boolean | 艾森豪威尔四象限标记 |
-| `humanMs` | number | 该任务当日人工工时（毫秒） |
-| `agentMs` | number | 该任务当日 Agent 运行时长（毫秒） |
+| `humanMs` | number | 该任务当日人工工时（毫秒，原始值） |
+| `agentMs` | number | 该任务当日 Agent 运行时长（毫秒，原始值） |
+| `humanTime` | string | 该任务当日人工工时（预格式化可读文本，如 `40 分钟`；服务端由 `humanMs` 格式化，**LLM 应直接引用**，勿自行换算毫秒） |
+| `agentTime` | string | 该任务当日 Agent 运行时长（预格式化可读文本，如 `1 小时 30 分钟`；服务端由 `agentMs` 格式化，同上） |
+| `totalTime` | string | 该任务人工 + Agent **合计用时**（预格式化可读文本，如 `1 小时 10 分钟`；服务端由 `humanMs + agentMs` 格式化，**LLM 标注用时优先引用此单值**，避免在双轨间挑选出错） |
+
+> 用时字段由服务端预格式化（`formatDuration`，输出 `X 小时` / `X 分钟` / `X 小时 X 分钟` / `不足 1 分钟`），LLM 直接引用文本即可，无需自行换算毫秒值。
 
 实际请求中数组 / 对象字段以 `JSON.stringify` 序列化为字符串后发送。完整请求示例（`inputs` 字段）：
 
 ```json
 {
   "report_date": "2026-08-06",
-  "completed_tasks": "[{\"id\":1,\"title\":\"写周报\",\"important\":true,\"urgent\":false,\"humanMs\":1800000,\"agentMs\":0}]",
-  "pending_tasks": "[{\"id\":2,\"title\":\"联调接口\",\"important\":false,\"urgent\":true,\"humanMs\":0,\"agentMs\":300000}]",
+  "completed_tasks": "[{\"id\":1,\"title\":\"写周报\",\"important\":true,\"urgent\":false,\"humanMs\":2400000,\"agentMs\":1800000,\"humanTime\":\"40 分钟\",\"agentTime\":\"30 分钟\",\"totalTime\":\"1 小时 10 分钟\"}]",
+  "pending_tasks": "[{\"id\":2,\"title\":\"联调接口\",\"important\":false,\"urgent\":true,\"humanMs\":900000,\"agentMs\":5400000,\"humanTime\":\"15 分钟\",\"agentTime\":\"1 小时 30 分钟\",\"totalTime\":\"1 小时 45 分钟\"}]",
   "extra_work": "{\"temporaryWork\":\"临时会议\",\"meetings\":\"产品评审\"}",
   "risks": "暂无",
   "tomorrow_plan": "开始 v1.1.0 开发",
-  "time_summary": "{\"totalHumanMs\":3600000,\"totalAgentMs\":600000}"
+  "time_summary": "{\"totalHumanMs\":3600000,\"totalAgentMs\":5400000,\"totalHumanTime\":\"1 小时\",\"totalAgentTime\":\"1 小时 30 分钟\"}"
 }
 ```
 

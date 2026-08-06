@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { createInMemoryRepos } from '../repos/in-memory.js';
 import { createDifyClient } from '../dify/difyClient.js';
 import { MockPublisher } from '../publishers/index.js';
-import { createReportService, buildReportSource } from './reportService.js';
+import { createReportService, buildReportSource, formatDuration } from './reportService.js';
 import { localToday, dayStartUtc } from '../repos/timeutil.js';
 
 // 本地今天 00:00 起偏移 offsetMinutes 分钟的 UTC ISO 时刻（保证落在本地当天内）
@@ -39,6 +39,24 @@ function inputAwareDify() {
     },
   };
 }
+
+describe('formatDuration（用时预格式化）', () => {
+  it('整小时 / 时+分 / 仅分钟', () => {
+    expect(formatDuration(3 * 3600 * 1000)).toBe('3 小时');
+    expect(formatDuration(2 * 3600 * 1000 + 30 * 60000)).toBe('2 小时 30 分钟');
+    expect(formatDuration(40 * 60000)).toBe('40 分钟');
+  });
+  it('不足 1 分钟 / 0 / 负数 / undefined', () => {
+    expect(formatDuration(10000)).toBe('不足 1 分钟'); // 10 秒 → 四舍五入到 0 分钟
+    expect(formatDuration(0)).toBe('不足 1 分钟');
+    expect(formatDuration(-1)).toBe('不足 1 分钟');
+    expect(formatDuration(undefined)).toBe('不足 1 分钟');
+  });
+  it('毫秒取整到分钟（四舍五入）', () => {
+    expect(formatDuration(90 * 1000)).toBe('2 分钟'); // 1.5 分钟 → 2
+    expect(formatDuration(59 * 60000 + 59 * 1000)).toBe('1 小时'); // ≈60 分钟
+  });
+});
 
 describe('buildReportSource 口径', () => {
   it('完成/待办/已删/当日时长聚合', async () => {
@@ -145,11 +163,24 @@ describe('generate', () => {
 
     expect(captured.report_date).toBe(today);
     const completed = JSON.parse(captured.completed_tasks);
-    expect(completed[0]).toMatchObject({ id: task.id, title: 't', humanMs: 180000, agentMs: 0 });
+    expect(completed[0]).toMatchObject({
+      id: task.id,
+      title: 't',
+      humanMs: 180000,
+      agentMs: 0,
+      humanTime: '3 分钟',
+      agentTime: '不足 1 分钟',
+      totalTime: '3 分钟',
+    });
     expect(JSON.parse(captured.extra_work)).toEqual({ temporaryWork: '补', meetings: '会' });
     expect(captured.risks).toBe('风险');
     expect(captured.tomorrow_plan).toBe('计划');
-    expect(JSON.parse(captured.time_summary)).toEqual({ totalHumanMs: 180000, totalAgentMs: 0 });
+    expect(JSON.parse(captured.time_summary)).toEqual({
+      totalHumanMs: 180000,
+      totalAgentMs: 0,
+      totalHumanTime: '3 分钟',
+      totalAgentTime: '不足 1 分钟',
+    });
   });
 
   it('publish 失败 → status=publish_failed，不向上抛', async () => {
@@ -171,6 +202,38 @@ describe('generate', () => {
     const published = await service.publishReport(repos, today);
     expect(published.status).toBe('published');
     expect(published.docUrl).toBe(`https://mock.local/daily/${today}`);
+  });
+
+  it('补发时 publisher 返回 url=null（dws doc update 不返回 URL）→ 保留已有 docUrl', async () => {
+    const urlLessPublisher = {
+      async publish(opts) {
+        // 模拟 dws doc update：只返回 nodeId，响应里没有 URL
+        return { nodeId: opts.existingNodeId || 'dws-1', url: null };
+      },
+    };
+    const { repos, service } = makeService({ publisher: urlLessPublisher });
+    const today = localToday();
+
+    const first = await service.generate(repos, { date: today });
+    expect(first.status).toBe('published');
+    expect(first.docNodeId).toBe('dws-1');
+    expect(first.docUrl).toBeNull(); // 首建 publisher 也没给 URL
+
+    // 模拟首建后拿到真实链接（写入 report 行）
+    await repos.reports.upsert({
+      date: today,
+      content: first.content,
+      status: 'published',
+      docUrl: 'https://alidocs.dingtalk.com/i/nodes/dws-1',
+      docNodeId: 'dws-1',
+      includeDeleted: first.includeDeleted,
+      version: first.version,
+    });
+
+    const republished = await service.publishReport(repos, today);
+    expect(republished.status).toBe('published');
+    expect(republished.docUrl).toBe('https://alidocs.dingtalk.com/i/nodes/dws-1');
+    expect(republished.docNodeId).toBe('dws-1');
   });
 });
 

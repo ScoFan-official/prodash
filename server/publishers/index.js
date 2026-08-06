@@ -108,6 +108,8 @@ export class DwsCliPublisher {
           'doc', 'update',
           '--node', String(existingNodeId),
           '--content-file', tmpFile,
+          '--mode', 'overwrite',
+          '--yes',
           '--format', 'json',
         );
       } else {
