@@ -19,7 +19,7 @@ describe('App 外壳', () => {
     expect(screen.queryByRole('tab', { name: '番茄钟' })).not.toBeInTheDocument()
   })
 
-  test('笔记/记账占位页可切换并显示敬请期待', async () => {
+  test('笔记/Token流水占位页可切换并显示敬请期待', async () => {
     render(<App />)
     const user = userEvent.setup()
     await user.click(screen.getByRole('tab', { name: '笔记' }))
@@ -27,8 +27,8 @@ describe('App 外壳', () => {
     expect(screen.getByText('敬请期待')).toBeInTheDocument()
     expect(screen.queryByPlaceholderText(/添加待办/)).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('tab', { name: '记账' }))
-    expect(screen.getByRole('heading', { name: '记账' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Token流水' }))
+    expect(screen.getByRole('heading', { name: 'Token流水' })).toBeInTheDocument()
     expect(screen.getByText('敬请期待')).toBeInTheDocument()
   })
 

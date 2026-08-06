@@ -312,6 +312,24 @@
   color: var(--text-muted);
 }
 
+/* 重要·紧急任务在视觉上更突出 */
+.todo-item[data-quadrant="important-urgent"] {
+  border-color: rgba(255, 143, 127, 0.45);
+  background: linear-gradient(90deg, var(--q1-bg) 0%, var(--surface) 100%);
+  box-shadow: 0 0 0 1px rgba(255, 143, 127, 0.12), 0 4px 14px rgba(255, 143, 127, 0.08);
+}
+
+.todo-item[data-quadrant="important-urgent"]:hover {
+  border-color: rgba(255, 143, 127, 0.65);
+  box-shadow: 0 0 0 1px rgba(255, 143, 127, 0.18), 0 6px 20px rgba(255, 143, 127, 0.12);
+}
+
+.todo-item[data-quadrant="important-urgent"] .todo-quadrant-tag {
+  background: var(--q1-bg);
+  color: var(--q1);
+  border-color: rgba(255, 143, 127, 0.35);
+}
+
 /* =========================================================
    四象限视图
    ========================================================= */
@@ -333,22 +351,22 @@
   overflow: hidden;
 }
 
-.quadrant-cell:nth-child(1) {
+.quadrant-cell[data-quadrant="important-urgent"] {
   --cell-accent: var(--q1);
   --cell-bg: var(--q1-bg);
 }
 
-.quadrant-cell:nth-child(2) {
+.quadrant-cell[data-quadrant="important-not-urgent"] {
   --cell-accent: var(--q2);
   --cell-bg: var(--q2-bg);
 }
 
-.quadrant-cell:nth-child(3) {
+.quadrant-cell[data-quadrant="not-important-urgent"] {
   --cell-accent: var(--q3);
   --cell-bg: var(--q3-bg);
 }
 
-.quadrant-cell:nth-child(4) {
+.quadrant-cell[data-quadrant="not-important-not-urgent"] {
   --cell-accent: var(--q4);
   --cell-bg: var(--q4-bg);
 }
@@ -406,6 +424,10 @@
   background: var(--surface-elevated);
 }
 
+.quadrant-cell .todo-item[data-quadrant="important-urgent"] {
+  background: linear-gradient(90deg, var(--q1-bg) 0%, var(--surface-elevated) 100%);
+}
+
 /* =========================================================
    占位页
    ========================================================= */
@@ -441,33 +463,36 @@
 
 .task-timer-controls {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .timer-track {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: 4px;
+  padding: 3px 6px;
   background: var(--surface-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .timer-track-label {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-muted);
   min-width: 2.8em;
+  flex-shrink: 0;
 }
 
 .timer-track-status {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 999px;
   background: var(--surface);
   color: var(--text-muted);
@@ -489,9 +514,9 @@
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  padding: 5px 12px;
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
@@ -929,6 +954,74 @@
   font-variant-numeric: tabular-nums;
   min-width: 3.5em;
   text-align: right;
+}
+
+/* =========================================================
+   新增统计维度
+   ========================================================= */
+
+.quadrant-distribution .stats-ranking__item {
+  grid-template-columns: auto 1fr auto;
+}
+
+.quadrant-distribution .stats-ranking__name {
+  grid-row: 1;
+}
+
+.quadrant-distribution .stats-ranking__duration {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 0.82rem;
+}
+
+.quadrant-distribution .stats-ranking__percent {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: center;
+}
+
+.quadrant-distribution .stats-ranking__bar {
+  grid-column: 1 / 4;
+  grid-row: 3;
+}
+
+.agent-share {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--surface-elevated);
+  border-radius: var(--radius-sm);
+}
+
+.agent-share__label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.agent-share__bar {
+  height: 8px;
+  background: var(--surface-hover);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.agent-share__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--q2);
+  transition: width 0.4s ease;
+}
+
+.agent-efficiency .stats-ranking__bar {
+  background: var(--surface-hover);
+}
+
+.agent-efficiency__fill--agent {
+  background: var(--q2);
 }
 
 /* =========================================================

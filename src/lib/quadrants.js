@@ -1,8 +1,8 @@
 export const QUADRANT_ORDER = [
-  'important-urgent',
   'important-not-urgent',
-  'not-important-urgent',
+  'important-urgent',
   'not-important-not-urgent',
+  'not-important-urgent',
 ]
 
 export const QUADRANTS = {

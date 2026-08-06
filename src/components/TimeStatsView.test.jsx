@@ -127,4 +127,38 @@ describe('TimeStatsView 统计视图', () => {
     expect(agentCard.getByText('1 小时')).toBeInTheDocument() // Agent 60 分钟（已停止）
     expect(totalCard.getByText('1 小时 30 分钟')).toBeInTheDocument() // 总 90 分钟
   })
+
+  test('新增空态：象限分布与 Agent 效率', () => {
+    render(<TimeStatsView active={{}} records={[]} todos={todos} />)
+    expect(screen.getByText('今日暂无象限分布数据')).toBeInTheDocument()
+    expect(screen.getByText('今日暂无Agent效率数据')).toBeInTheDocument()
+  })
+
+  test('象限分布统计展示任务数与总时长', () => {
+    const records = [
+      record('t1', 'human', [segment(today, 1 * 3600_000)]),
+      record('t3', 'human', [segment(today, 30 * 60_000)]),
+    ]
+    render(<TimeStatsView active={{}} records={records} todos={todos} />)
+    expect(screen.getByText('象限分布统计')).toBeInTheDocument()
+    const quadrantSection = screen.getByText('象限分布统计').closest('.stats-section')
+    expect(within(quadrantSection).getByText('重要·紧急（1 个任务）')).toBeInTheDocument()
+    expect(within(quadrantSection).getByText('重要·不紧急（1 个任务）')).toBeInTheDocument()
+    expect(within(quadrantSection).getByText('1 小时')).toBeInTheDocument()
+    expect(within(quadrantSection).getByText('30 分钟')).toBeInTheDocument()
+  })
+
+  test('Agent 效率统计展示 Agent 占比与任务排行', () => {
+    const records = [
+      record('t1', 'human', [segment(today, 1 * 3600_000)]),
+      record('t1', 'agent', [segment(today, 1 * 3600_000)]),
+      record('t2', 'human', [segment(today, 2 * 3600_000)]),
+    ]
+    render(<TimeStatsView active={{}} records={records} todos={todos} />)
+    expect(screen.getByText('Agent 效率统计')).toBeInTheDocument()
+    const agentSection = screen.getByText('Agent 效率统计').closest('.stats-section')
+    expect(within(agentSection).getByText('Agent 占总工时 25%')).toBeInTheDocument()
+    expect(within(agentSection).getByText('Agent · 任务甲')).toBeInTheDocument()
+    expect(within(agentSection).getByText('Agent 1 小时')).toBeInTheDocument()
+  })
 })

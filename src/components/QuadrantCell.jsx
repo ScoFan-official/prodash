@@ -11,7 +11,7 @@ export default function QuadrantCell({
   getTodoSummary,
 }) {
   return (
-    <section className="quadrant-cell" data-testid={`quadrant-${quadrantKey}`}>
+    <section className="quadrant-cell" data-testid={`quadrant-${quadrantKey}`} data-quadrant={quadrantKey}>
       <header>
         <h3>{title}</h3>
         <span className="quadrant-hint">{hint}</span>

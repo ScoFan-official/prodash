@@ -8,9 +8,10 @@ export default function TodoItem({
   onDelete,
   timerCallbacks,
 }) {
-  const quadrant = QUADRANTS[getQuadrantKey(todo.important, todo.urgent)]
+  const quadrantKey = getQuadrantKey(todo.important, todo.urgent)
+  const quadrant = QUADRANTS[quadrantKey]
   return (
-    <li className={`todo-item${todo.done ? ' is-done' : ''}`}>
+    <li className={`todo-item${todo.done ? ' is-done' : ''}`} data-quadrant={quadrantKey}>
       <input
         type="checkbox"
         checked={todo.done}
