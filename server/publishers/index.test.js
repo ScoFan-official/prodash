@@ -98,6 +98,33 @@ describe('DwsCliPublisher', () => {
     expect(result).toEqual({ nodeId: 'n9', url: 'https://x/9' });
   });
 
+  it('dwsScript 提供时按 node + dws.js 前缀调用（Windows .cmd shim 场景）', async () => {
+    const execFileImpl = vi
+      .fn()
+      .mockResolvedValue({ stdout: JSON.stringify({ nodeId: 'abc123', url: 'https://wiki.example/doc/1' }), stderr: '' });
+    const p = new DwsCliPublisher({
+      wsId: 'WS1',
+      folderId: 'F1',
+      dwsBin: 'C:/Program Files/nodejs/node.exe',
+      dwsScript: 'D:/dws/bin/dws.js',
+      execFileImpl,
+    });
+
+    await p.publish({ date: '2026-08-06', content: '正文' });
+
+    const [bin, args] = execFileImpl.mock.calls[0];
+    expect(bin).toBe('C:/Program Files/nodejs/node.exe');
+    expect(args[0]).toBe('D:/dws/bin/dws.js');
+    expect(args.slice(1)).toEqual([
+      'doc', 'create',
+      '--name', '日报 2026-08-06',
+      '--content-file', expect.any(String),
+      '--workspace', 'WS1',
+      '--folder', 'F1',
+      '--format', 'json',
+    ]);
+  });
+
   it('缺 wsId 且为 create 时抛错', async () => {
     const execFileImpl = vi.fn();
     const p = new DwsCliPublisher({ folderId: 'F1', dwsBin: 'dws', execFileImpl });
@@ -127,6 +154,23 @@ describe('parseDwsOutput lenient 解析', () => {
   });
   it('仅 docUrl 也可解析', () => {
     expect(parseDwsOutput('{"docUrl":"w"}')).toEqual({ nodeId: null, url: 'w' });
+  });
+  it('dws doc create 真实输出：serverResponse.docUrl 被提取', () => {
+    const real = {
+      success: true,
+      nodeId: 'ZX6GRezwJl75MzDzhgm66gNqVdqbropQ',
+      chunksWritten: 1,
+      serverResponse: {
+        docUrl: 'https://alidocs.dingtalk.com/i/nodes/ZX6GRezwJl75MzDzhgm66gNqVdqbropQ',
+        name: '日报 2026-08-06',
+        nodeId: 'ZX6GRezwJl75MzDzhgm66gNqVdqbropQ',
+        success: true,
+      },
+    };
+    expect(parseDwsOutput(JSON.stringify(real))).toEqual({
+      nodeId: 'ZX6GRezwJl75MzDzhgm66gNqVdqbropQ',
+      url: 'https://alidocs.dingtalk.com/i/nodes/ZX6GRezwJl75MzDzhgm66gNqVdqbropQ',
+    });
   });
   it('无有效 JSON 返回空', () => {
     expect(parseDwsOutput('nothing here')).toEqual({ nodeId: null, url: null });

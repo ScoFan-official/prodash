@@ -84,7 +84,8 @@ npm run dev
 | `PUBLISHER` | 发布器实现：`mock` / `file` / `dws` | `mock` |
 | `DINGTALK_WIKI_WS_ID` | 钉钉知识库空间 ID（`PUBLISHER=dws` 必需） | 空 |
 | `DINGTALK_WIKI_FOLDER_ID` | 钉钉知识库「日报」文件夹 ID（可选） | 空 |
-| `DWS_BIN` | dws 可执行文件路径 | `dws` |
+| `DWS_BIN` | dws 可执行文件路径（Windows shim 场景填 node.exe 绝对路径） | `dws` |
+| `DWS_SCRIPT` | dws CLI 的 JS 入口绝对路径；设置后发布器按 `DWS_BIN DWS_SCRIPT <args>` 调用（Windows `.cmd`/`.bat` shim 分发导致 execFile ENOENT 时必配） | 空 |
 | `REPORTS_OUTPUT_DIR` | `PUBLISHER=file` 时的输出目录 | `reports-output/` |
 | `REPORT_CRON` | 日报自动生成 cron（每天 21:00） | `0 21 * * *` |
 

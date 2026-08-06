@@ -39,15 +39,22 @@ export class FilePublisher {
 
 /**
  * 从任意对象中 lenient 提取 nodeId 与 url（兼容 nodeId/node_id、docUrl/url/doc_url，
- * 含 data 一层嵌套）。
+ * 含 data 与 serverResponse 一层嵌套——dws doc create 实际把 docUrl 放在 serverResponse 下）。
  */
 export function extractDwsResult(obj) {
   const root = obj && typeof obj === 'object' ? obj : {};
+  const inner =
+    root.serverResponse && typeof root.serverResponse === 'object' ? root.serverResponse : {};
   const nodeId =
-    root.nodeId ?? root.node_id ?? root.data?.nodeId ?? root.data?.node_id ?? null;
+    root.nodeId ?? root.node_id ??
+    inner.nodeId ?? inner.node_id ??
+    root.data?.nodeId ?? root.data?.node_id ??
+    null;
   const url =
     root.docUrl ?? root.url ?? root.doc_url ??
-    root.data?.docUrl ?? root.data?.url ?? root.data?.doc_url ?? null;
+    inner.docUrl ?? inner.url ?? inner.doc_url ??
+    root.data?.docUrl ?? root.data?.url ?? root.data?.doc_url ??
+    null;
   return { nodeId, url };
 }
 
@@ -75,13 +82,16 @@ export class DwsCliPublisher {
    * @param {object} opts
    * @param {string} opts.wsId   工作空间 ID（创建必需）
    * @param {string} [opts.folderId] 文件夹 ID（可选）
-   * @param {string} [opts.dwsBin]  dws 二进制路径，默认 'dws'
+   * @param {string} [opts.dwsBin]  dws 可执行（或解释器，如 node）路径，默认 'dws'
+   * @param {string} [opts.dwsScript] dws CLI 入口 JS 路径；提供时按 `dwsBin dwsScript <args>` 调用
+   *   （Windows 下 dws 常以 .cmd/.bat shim 分发，execFile 直调会 ENOENT，故用 node + dws.js）
    * @param {Function} [opts.execFileImpl] 测试注入的 execFile 实现
    */
-  constructor({ wsId, folderId, dwsBin = 'dws', execFileImpl } = {}) {
+  constructor({ wsId, folderId, dwsBin = 'dws', dwsScript, execFileImpl } = {}) {
     this.wsId = wsId;
     this.folderId = folderId;
     this.dwsBin = dwsBin;
+    this.dwsScript = dwsScript;
     this.execFile = execFileImpl || execFileAsync;
   }
 
@@ -114,7 +124,11 @@ export class DwsCliPublisher {
         args.push('--format', 'json');
       }
 
-      const { stdout } = await this.execFile(this.dwsBin, args, { maxBuffer: 16 * 1024 * 1024 });
+      const { stdout } = await this.execFile(
+        this.dwsBin,
+        this.dwsScript ? [this.dwsScript, ...args] : args,
+        { maxBuffer: 16 * 1024 * 1024 },
+      );
       const { nodeId, url } = parseDwsOutput(stdout);
       if (!nodeId && !url) {
         throw new Error('dws 输出中未找到 nodeId/docUrl');

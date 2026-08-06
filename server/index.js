@@ -62,6 +62,7 @@ const publisher = createPublisher(process.env.PUBLISHER || 'mock', {
   wsId: process.env.DINGTALK_WIKI_WS_ID,
   folderId: process.env.DINGTALK_WIKI_FOLDER_ID,
   dwsBin: process.env.DWS_BIN || 'dws',
+  dwsScript: process.env.DWS_SCRIPT,
   outputDir: process.env.REPORTS_OUTPUT_DIR || 'reports-output/',
 });
 
