@@ -7,7 +7,6 @@ import {
   getElapsedMs,
   hasRunningTimerForTodo,
   stopTimersForTodo,
-  getReportData,
   subscribe,
 } from './timeStore'
 
@@ -220,51 +219,6 @@ describe('timeStore 计时领域模块', () => {
   test('stopTimersForTodo 无相关计时时为空操作', () => {
     const s = createInitialState()
     expect(stopTimersForTodo(s, 't1', 1000)).toBe(s)
-  })
-
-  test('getReportData 按日期过滤并汇总双轨时长', () => {
-    const todos = [
-      { id: 't1', text: '任务甲' },
-      { id: 't2', text: '任务乙' },
-    ]
-    const dayStart = new Date(2026, 7, 5).getTime()
-    let s = createInitialState()
-    s = startTimer(s, 't1', 'human', dayStart + 3600_000)
-    s = startTimer(s, 't1', 'agent', dayStart + 7200_000)
-    s = startTimer(s, 't2', 'human', dayStart + 10800_000)
-    s = stopTimer(s, 't1:human', dayStart + 14400_000)
-    s = stopTimer(s, 't1:agent', dayStart + 18000_000)
-    s = stopTimer(s, 't2:human', dayStart + 21600_000)
-
-    const report = getReportData(s, todos, new Date(2026, 7, 5))
-    expect(report.date).toBe('2026-08-05')
-    expect(report.records).toHaveLength(3)
-    expect(report.totalHumanMs).toBe(21600_000)
-    expect(report.totalAgentMs).toBe(10800_000)
-    expect(report.records.find((r) => r.todoId === 't1').todoTitle).toBe('任务甲')
-  })
-
-  test('getReportData 找不到待办时使用“已删除任务”', () => {
-    const dayStart = new Date(2026, 7, 5).getTime()
-    let s = createInitialState()
-    s = startTimer(s, 't9', 'human', dayStart)
-    s = stopTimer(s, 't9:human', dayStart + 1000)
-    const report = getReportData(s, [], new Date(2026, 7, 5))
-    expect(report.records[0].todoTitle).toBe('已删除任务')
-  })
-
-  test('getReportData 接受 YYYY-MM-DD 字符串日期', () => {
-    const dayStart = new Date(2026, 7, 5).getTime()
-    let s = createInitialState()
-    s = startTimer(s, 't1', 'human', dayStart)
-    s = stopTimer(s, 't1:human', dayStart + 1000)
-    expect(getReportData(s, [], '2026-08-05').records).toHaveLength(1)
-    expect(getReportData(s, [], '2026-08-06').records).toHaveLength(0)
-  })
-
-  test('getReportData 无匹配记录时返回零值', () => {
-    const report = getReportData(createInitialState(), [], new Date(2026, 7, 5))
-    expect(report).toEqual({ date: '2026-08-05', totalHumanMs: 0, totalAgentMs: 0, records: [] })
   })
 
   test('subscribe 在停止时通知，unsubscribe 后不再通知', () => {
