@@ -15,7 +15,8 @@ const TRACK_LABELS = {
  */
 export default function ActiveTimersBar({ active, todos, onStop }) {
   const [expanded, setExpanded] = useState(false)
-  const todoById = new Map((todos ?? []).map((todo) => [todo.id, todo]))
+  // todo.id 为数字（后端 BIGINT），timeStore 条目的 todoId 统一为 String，映射键归一为 String。
+  const todoById = new Map((todos ?? []).map((todo) => [String(todo.id), todo]))
   const now = Date.now()
 
   const items = Object.values(active ?? {})

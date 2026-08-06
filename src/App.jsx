@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import TodoView from './components/TodoView'
+import ReportView from './components/report/ReportView'
 import PlaceholderView from './components/PlaceholderView'
 
 const TABS = [
   { key: 'todo', label: '待办' },
+  { key: 'report', label: '日报' },
   { key: 'notes', label: '笔记' },
   { key: 'expenses', label: 'Token流水' },
 ]
@@ -31,6 +33,8 @@ export default function App() {
       <main className="app-main">
         {activeTab === 'todo' ? (
           <TodoView />
+        ) : activeTab === 'report' ? (
+          <ReportView />
         ) : (
           <PlaceholderView title={TABS.find((t) => t.key === activeTab).label} />
         )}

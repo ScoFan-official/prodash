@@ -2,6 +2,48 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TodoView from './TodoView'
 
+const { mockTasks, apiMocks } = vi.hoisted(() => {
+  const tasks = []
+  const apiMocks = {
+    getTasks: vi.fn(),
+    createTask: vi.fn(),
+    updateTask: vi.fn(),
+    deleteTask: vi.fn(),
+    postTimeEvent: vi.fn(),
+    getActiveSessions: vi.fn(),
+    getRecords: vi.fn(),
+  }
+  return { mockTasks: tasks, apiMocks }
+})
+
+vi.mock('../api/client', () => apiMocks)
+
+function installApiDefaults() {
+  mockTasks.length = 0
+  apiMocks.getTasks.mockImplementation(() =>
+    Promise.resolve(mockTasks.map((t) => ({ ...t }))),
+  )
+  apiMocks.createTask.mockImplementation((body) => {
+    const task = {
+      id: mockTasks.length + 1,
+      title: body.title,
+      important: body.important ?? false,
+      urgent: body.urgent ?? false,
+      status: 'active',
+      createdAt: '2026-08-06T08:00:00.000Z',
+      completedAt: null,
+      deletedAt: null,
+    }
+    mockTasks.push(task)
+    return Promise.resolve({ ...task })
+  })
+  apiMocks.updateTask.mockResolvedValue({})
+  apiMocks.deleteTask.mockResolvedValue({})
+  apiMocks.postTimeEvent.mockResolvedValue({})
+  apiMocks.getActiveSessions.mockResolvedValue([])
+  apiMocks.getRecords.mockResolvedValue([])
+}
+
 async function addTodo(text, { important = false, urgent = false } = {}) {
   const user = userEvent.setup()
   await user.type(screen.getByPlaceholderText(/添加待办/), text)
@@ -17,7 +59,8 @@ async function addTodo(text, { important = false, urgent = false } = {}) {
 
 describe('四象限视图', () => {
   beforeEach(() => {
-    window.localStorage.clear()
+    vi.clearAllMocks()
+    installApiDefaults()
   })
 
   async function switchToQuadrant() {

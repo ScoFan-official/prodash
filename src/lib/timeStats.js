@@ -86,7 +86,7 @@ function activeEntryToCurrentRecord(entry, now) {
 /**
  * 汇总指定日期的工时数据。
  *
- * state 为 timeStore 状态对象 { active, records }（与 getReportData 一致）。
+ * state 为 timeStore 状态对象 { active, records }。
  * 运行中/暂停中的 active 条目按「截至 now 停止」合成暂态记录后一并参与聚合，
  * 因此计时运行中统计也能反映截至当前时刻的人工/Agent 时长。
  * 按 segment 的 startedAt 本地日期归属，不跨日拆分；找不到待办时使用「已删除任务」。
@@ -102,7 +102,8 @@ export function aggregateToday(state, todos, now = Date.now()) {
     .filter(Boolean)
   const allRecords = [...records, ...currentRecords]
   const dateKey = toDateKey(now)
-  const todoById = new Map((todos ?? []).map((todo) => [todo.id, todo]))
+  // todo.id 为数字（后端 BIGINT），record.todoId 统一为 String，映射键归一为 String。
+  const todoById = new Map((todos ?? []).map((todo) => [String(todo.id), todo]))
   const taskMap = new Map()
   const categoryMap = new Map()
   let totalHumanMs = 0

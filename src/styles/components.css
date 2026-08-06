@@ -1025,6 +1025,233 @@
 }
 
 /* =========================================================
+   日报视图
+   ========================================================= */
+
+.report-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.report-view > h2 {
+  font-size: 1.4rem;
+  color: var(--text);
+}
+
+.report-loading {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.report-date-selector,
+.report-extra-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.report-date-selector input[type='date'] {
+  width: 100%;
+  max-width: 220px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.report-date-selector input[type='date']:hover {
+  border-color: var(--border-strong);
+}
+
+.report-date-selector input[type='date']:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(127, 184, 255, 0.12);
+}
+
+.report-source-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.report-source-summary p {
+  margin: 0;
+}
+
+.report-extra-input {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.report-extra-field textarea {
+  min-height: 84px;
+  resize: vertical;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.report-extra-field textarea:hover {
+  border-color: var(--border-strong);
+}
+
+.report-extra-field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(127, 184, 255, 0.12);
+}
+
+.report-action-area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.report-action-area > button,
+.report-actions button {
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+  color: var(--text);
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.report-action-area > button:hover:not(:disabled),
+.report-actions button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.report-action-area > button:focus-visible,
+.report-actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.report-action-area > button:disabled,
+.report-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.report-error {
+  padding: 10px 14px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.report-meta {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.report-doc-link {
+  align-self: flex-start;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.report-doc-link:hover {
+  text-decoration: underline;
+}
+
+.report-result {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.report-result > h2 {
+  font-size: 1.15rem;
+  color: var(--text);
+}
+
+.report-result-body {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.report-result button {
+  align-self: flex-start;
+  border: 1px solid var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.report-result button:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.report-result button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.report-result [role='status'] {
+  font-size: 0.92rem;
+  color: var(--accent);
+}
+
+/* =========================================================
    响应式
    ========================================================= */
 
@@ -1101,6 +1328,35 @@
 
   .quadrant-cell ul {
     max-height: 320px;
+  }
+
+  .report-view {
+    gap: 12px;
+  }
+
+  .report-extra-input {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .report-date-selector input[type='date'] {
+    max-width: 100%;
+  }
+
+  .report-action-area > button,
+  .report-actions button,
+  .report-result button {
+    width: 100%;
+  }
+
+  .report-result {
+    padding: 14px;
+  }
+
+  .report-result-body {
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   .placeholder-view {
