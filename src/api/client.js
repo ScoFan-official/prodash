@@ -127,3 +127,14 @@ export function getRecords(date) {
 export function getActiveSessions() {
   return request('/time-events/active')
 }
+
+// ── 钉钉待办同步（todo-sync）──
+// POST /api/todo-sync（手动触发同步；服务端 <2 分钟节流时返回缓存结果）
+export function syncTodos() {
+  return request('/todo-sync', { method: 'POST' })
+}
+
+// GET /api/todo-sync → { syncedAt, lastResult, profile, inFlight, configured }
+export function getTodoSyncStatus() {
+  return request('/todo-sync')
+}
