@@ -152,3 +152,86 @@ describe('syncFromDingtalk upsert', () => {
     expect(t.sourceLeader).toBeNull();
   });
 });
+
+describe('软删 / 节流 / 互斥', () => {
+  it('连续 2 次同步未见才软删：第一次仅标记保留', async () => {
+    const ctx = makeCtx();
+    await ctx.repos.tasks.create({
+      title: '消失任务', important: true, urgent: true,
+      dingtalkTaskId: 'dt-gone', source: 'dingtalk', status: 'active', syncWriteback: 'none',
+    });
+    ctx.client.listMyTasks.mockResolvedValue([]); // 两轮都拉不到
+    const r1 = await ctx.service.syncFromDingtalk();
+    expect(r1.softDeleted).toBe(0);
+    expect((await ctx.repos.tasks.getByDingtalkTaskId('dt-gone')).status).toBe('active');
+    const r2 = await ctx.service.syncFromDingtalk();
+    expect(r2.softDeleted).toBe(1);
+    expect((await ctx.repos.tasks.getByDingtalkTaskId('dt-gone')).status).toBe('deleted');
+  });
+
+  it('本轮重新出现：从 seenLastCycle 移除，不软删', async () => {
+    const ctx = makeCtx();
+    await ctx.repos.tasks.create({
+      title: 'x', important: true, urgent: true,
+      dingtalkTaskId: 'dt-x', source: 'dingtalk', status: 'active', syncWriteback: 'none',
+    });
+    ctx.client.listMyTasks
+      .mockResolvedValueOnce([]) // 第一轮：未见到 dt-x（进入候选集）
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([{ taskId: 'dt-x', subject: 'x', isDone: false, dueTime: null, bizTag: null }]); // 第二轮：重新出现
+    await ctx.service.syncFromDingtalk();
+    await ctx.service.syncFromDingtalk();
+    expect((await ctx.repos.tasks.getByDingtalkTaskId('dt-x')).status).toBe('active');
+  });
+
+  it('已软删任务不重复进候选集', async () => {
+    const ctx = makeCtx();
+    await ctx.repos.tasks.create({
+      title: 'x', important: true, urgent: true,
+      dingtalkTaskId: 'dt-x', source: 'dingtalk', status: 'deleted', syncWriteback: 'none',
+    });
+    ctx.client.listMyTasks.mockResolvedValue([]);
+    await ctx.service.syncFromDingtalk();
+    await ctx.service.syncFromDingtalk();
+    const t = await ctx.repos.tasks.getByDingtalkTaskId('dt-x');
+    expect(t.status).toBe('deleted');
+    expect(t.title).toBe('x'); // 软删保留元数据
+  });
+
+  it('节流：距上次同步 < 2 分钟返回缓存结果，不重新拉取；超过后放行', async () => {
+    const ctx = makeCtx();
+    ctx.client.listMyTasks.mockResolvedValue([]);
+    await ctx.service.syncFromDingtalk(); // 成功 → lastSyncAt=NOW
+    ctx.client.listMyTasks.mockClear();
+    const cached = await ctx.service.throttleSkip();
+    expect(cached).toEqual(expect.objectContaining({ imported: 0, updated: 0 }));
+    expect(ctx.client.listMyTasks).not.toHaveBeenCalled();
+    // 超过 2 分钟后不再节流（换一个 now 前移的实例）
+    const later = createTodoSyncService({
+      client: ctx.client, repos: ctx.repos, profile: 'corp:user',
+      now: () => new Date('2026-08-07T10:03:00.000Z'),
+    });
+    expect(await later.throttleSkip()).toBeNull();
+  });
+
+  it('互斥：同步进行中时第二个调用返回 { inFlight: true }，不重复拉取', async () => {
+    const ctx = makeCtx();
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    ctx.client.listMyTasks.mockImplementation(() => gate); // 两轮拉取都挂起
+    const p1 = ctx.service.syncFromDingtalk();
+    await new Promise((r) => setTimeout(r, 0)); // 等 withInFlightGuard 置位
+    const p2 = await ctx.service.syncFromDingtalk();
+    expect(p2).toEqual({ inFlight: true });
+    release([]);
+    await p1;
+    expect(ctx.client.listMyTasks).toHaveBeenCalledTimes(2); // 只有 p1 拉取（active+completed）
+  });
+
+  it('同步失败不更新 lastSyncAt（保留上次同步时间）', async () => {
+    const ctx = makeCtx();
+    ctx.client.listMyTasks.mockRejectedValue(new Error('dws token 失效'));
+    await expect(ctx.service.syncFromDingtalk()).rejects.toThrow('dws token 失效');
+    expect(ctx.service.getStatus().syncedAt).toBeNull();
+  });
+});

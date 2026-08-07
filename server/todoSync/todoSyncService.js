@@ -42,9 +42,31 @@ export function createTodoSyncService({ client, repos, profile = '', now = () =>
     }
   }
 
-  /** 占位实现（Task 4 替换）：软删本轮未见到的钉钉任务。 */
+  /** 软删判定：本轮出现的 taskId 移出 seenLastCycle；上一轮标记且本轮仍未见 → 软删；本轮未见则仅标记。 */
   async function softDeleteIfGone({ seenIds }) {
-    return 0;
+    for (const id of seenIds) seenLastCycle.delete(id);
+    const vanished = [...seenLastCycle].filter((id) => !seenIds.has(id));
+    let softDeleted = 0;
+    for (const id of vanished) {
+      const local = await repos.tasks.getByDingtalkTaskId(id);
+      if (local && local.status !== 'deleted') {
+        await repos.tasks.softDelete(local.id); // 仅置 status='deleted'，保留元数据，不调钉钉删除接口
+        softDeleted += 1;
+      }
+      seenLastCycle.delete(id);
+    }
+    const allLocal = await repos.tasks.list();
+    for (const t of allLocal) {
+      if (
+        t.dingtalkTaskId &&
+        t.source === 'dingtalk' &&
+        t.status !== 'deleted' &&
+        !seenIds.has(t.dingtalkTaskId)
+      ) {
+        seenLastCycle.add(t.dingtalkTaskId);
+      }
+    }
+    return softDeleted;
   }
 
   /** 占位实现（Task 6 替换）：重试 pending 回写。 */
