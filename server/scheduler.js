@@ -61,3 +61,32 @@ export function stopScheduler() {
     cronTask = null;
   }
 }
+
+let todoSyncCronTask = null;
+
+/**
+ * 启动钉钉待办同步 cron 调度（默认每 30 分钟）。
+ * run 为同步函数（返回 Promise）；非法 cron 表达式直接抛错。
+ * @returns {object} node-cron 任务句柄
+ */
+export function startTodoSync({ cron: cronExpr = '*/30 * * * *', run }) {
+  if (!cron.validate(cronExpr)) {
+    throw new Error(`[scheduler] 无效的 cron 表达式: ${cronExpr}`);
+  }
+  stopTodoSync();
+  todoSyncCronTask = cron.schedule(cronExpr, () => {
+    run().catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error('[scheduler] todo sync failed:', err?.message || err);
+    });
+  });
+  return todoSyncCronTask;
+}
+
+/** 停止当前 todo-sync cron 任务（测试与重启用）。 */
+export function stopTodoSync() {
+  if (todoSyncCronTask) {
+    todoSyncCronTask.stop();
+    todoSyncCronTask = null;
+  }
+}

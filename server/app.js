@@ -63,7 +63,7 @@ function validateTaskPatch(body) {
   return { value: patch };
 }
 
-export function createApp({ repos, reportRouter }) {
+export function createApp({ repos, reportRouter, todoSyncRouter, todoSyncService }) {
   const app = express();
   app.use(express.json());
 
@@ -186,6 +186,11 @@ export function createApp({ repos, reportRouter }) {
   // 日报写操作路由（generate/publish/extra/查询），由入口组装后注入
   if (reportRouter) {
     app.use('/api/reports', reportRouter);
+  }
+
+  // 钉钉待办同步路由，由入口组装后注入（未配置 DINGTALK_TODO_PROFILE 时由路由层返回 503）
+  if (todoSyncRouter) {
+    app.use('/api/todo-sync', todoSyncRouter);
   }
 
   // ---------------------------------------------------------- 静态托管 / SPA

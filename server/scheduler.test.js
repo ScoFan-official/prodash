@@ -7,7 +7,7 @@ import { createInMemoryRepos } from './repos/in-memory.js';
 import { createDifyClient } from './dify/difyClient.js';
 import { MockPublisher } from './publishers/index.js';
 import { createReportService } from './services/reportService.js';
-import { runAutoReport, startScheduler, stopScheduler } from './scheduler.js';
+import { runAutoReport, startScheduler, stopScheduler, startTodoSync, stopTodoSync } from './scheduler.js';
 import { localToday } from './repos/timeutil.js';
 
 function makeService() {
@@ -93,5 +93,21 @@ describe('startScheduler', () => {
     const task = startScheduler({ repos: {}, service: {}, cron: '0 0 1 1 *' });
     expect(task).toBeTruthy();
     stopScheduler();
+  });
+});
+
+describe('startTodoSync', () => {
+  // 独立清理：若断言失败导致 test 末尾 stopTodoSync 未执行，避免每秒 cron 悬挂 vitest 进程
+  afterEach(() => {
+    stopTodoSync();
+  });
+
+  it('非法 cron 抛错；合法每秒 cron 触发 run', async () => {
+    expect(() => startTodoSync({ cron: 'not-a-cron', run: async () => {} })).toThrow(/cron/);
+    const run = vi.fn().mockResolvedValue({ imported: 0 });
+    startTodoSync({ cron: '* * * * * *', run }); // 每秒触发（node-cron 6 段）
+    await new Promise((r) => setTimeout(r, 1100));
+    expect(run).toHaveBeenCalled();
+    stopTodoSync();
   });
 });

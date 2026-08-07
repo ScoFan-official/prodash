@@ -12,7 +12,10 @@ import { createDifyClient } from './dify/difyClient.js';
 import { createPublisher } from './publishers/index.js';
 import { createReportService } from './services/reportService.js';
 import { createReportsRouter } from './routes/reports.js';
-import { startScheduler } from './scheduler.js';
+import { DwsTodoClient } from './todoSync/dwsTodoClient.js';
+import { createTodoSyncService } from './todoSync/todoSyncService.js';
+import { createTodoSyncRouter } from './routes/todoSync.js';
+import { startScheduler, startTodoSync } from './scheduler.js';
 
 const requiredEnv = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
 const missing = requiredEnv.filter((k) => !process.env[k]);
@@ -95,14 +98,41 @@ try {
 const repos = createMysqlRepos(pool);
 const service = createReportService({ difyClient, publisher });
 const reportRouter = createReportsRouter({ repos, service });
-const app = createApp({ repos, reportRouter });
+
+// 钉钉待办同步：DwsTodoClient 复用 DWS_BIN/DWS_SCRIPT（与 DwsCliPublisher 同源）。
+// DINGTALK_TODO_PROFILE 必须显式配置：未配置 → 启动打印错误（fail-fast），
+// 同步接口返回 503，其他服务（任务/日报）不受影响。
+const dingtalkTodoProfile = process.env.DINGTALK_TODO_PROFILE || '';
+const todoSyncClient = new DwsTodoClient({
+  dwsBin: process.env.DWS_BIN || 'dws',
+  dwsScript: process.env.DWS_SCRIPT,
+  profile: dingtalkTodoProfile,
+});
+if (!dingtalkTodoProfile) {
+  console.error(
+    '[prodash-server] DINGTALK_TODO_PROFILE 未配置：钉钉待办同步不可用（拉取/回写均需显式 --profile），' +
+      '请在 .env 配置来源组织（见 .env.example）。其他服务不受影响。'
+  );
+}
+const todoSyncService = createTodoSyncService({
+  client: todoSyncClient,
+  repos,
+  profile: dingtalkTodoProfile,
+});
+const todoSyncRouter = createTodoSyncRouter({ service: todoSyncService });
+const app = createApp({ repos, reportRouter, todoSyncRouter, todoSyncService });
 
 // 调度器：仅在非测试环境启动
 if (process.env.NODE_ENV !== 'test') {
   try {
     startScheduler({ repos, service, cron: process.env.REPORT_CRON });
+    startTodoSync({
+      cron: process.env.DINGTALK_TODO_SYNC_CRON,
+      run: () => todoSyncService.syncFromDingtalk(),
+    });
     console.log(
-      `[prodash-server] scheduler started (cron=${process.env.REPORT_CRON || '0 21 * * *'})`
+      `[prodash-server] scheduler started (report=${process.env.REPORT_CRON || '0 21 * * *'}, ` +
+        `todo-sync=${process.env.DINGTALK_TODO_SYNC_CRON || '*/30 * * * *'})`
     );
   } catch (err) {
     console.error(`[prodash-server] ${err.message}`);
