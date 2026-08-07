@@ -91,10 +91,26 @@ export function createApp({ repos, reportRouter, todoSyncRouter, todoSyncService
     ah(async (req, res) => {
       const id = parseId(req.params.id);
       if (!id) return res.status(400).json({ error: 'invalid task id' });
-      const check = validateTaskPatch(req.body || {});
+      const body = req.body || {};
+      const existing = await repos.tasks.get(id);
+      if (!existing) return res.status(404).json({ error: 'Not Found' });
+      if (existing.source === 'dingtalk') {
+        // 标题锁定：忽略 title；四象限锁定：忽略 important/urgent（同步时服务端强制 1）
+        delete body.title;
+        delete body.important;
+        delete body.urgent;
+      }
+      const check = validateTaskPatch(body);
       if (check.error) return res.status(400).json({ error: check.error });
+      // 即时回写：完成/取消完成双向对称；失败置 pending（本地状态照常更新，乐观生效）
+      if (todoSyncService && existing.source === 'dingtalk' && 'status' in check.value) {
+        try {
+          await todoSyncService.writebackStatus({ task: existing, status: check.value.status });
+        } catch {
+          await repos.tasks.setSyncWriteback(id, 'pending');
+        }
+      }
       const task = await repos.tasks.update(id, check.value);
-      if (!task) return res.status(404).json({ error: 'Not Found' });
       res.json(task);
     })
   );

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -26,8 +26,12 @@ const todayIso = (h, mi = 0) => {
 
 function makeApp() {
   const repos = createInMemoryRepos();
-  const app = createApp({ repos });
-  return { app, repos };
+  // 钉钉回写 stub：真实 writebackStatus 在 todoSyncService.test.js 中覆盖
+  const todoSyncService = {
+    writebackStatus: vi.fn().mockResolvedValue(),
+  };
+  const app = createApp({ repos, todoSyncService });
+  return { app, repos, todoSyncService };
 }
 
 let ctx;
@@ -319,5 +323,51 @@ describe('static hosting & error handling', () => {
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toMatch(/html/);
     }
+  });
+});
+
+describe('钉钉任务 PATCH 回写', () => {
+  async function createDingtalkTask(repos, overrides = {}) {
+    return repos.tasks.create({
+      title: '领导任务', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', sourceLeader: '闫佳琪',
+      dueTime: null, syncOrigin: null, syncWriteback: 'none', status: 'active',
+      ...overrides,
+    });
+  }
+
+  it('完成 → 触发 writebackStatus（status=completed）且本地状态更新', async () => {
+    const t = await createDingtalkTask(ctx.repos);
+    const res = await request(ctx.app).patch(`/api/tasks/${t.id}`).send({ status: 'completed' });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('completed');
+    expect(ctx.todoSyncService.writebackStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'completed' })
+    );
+  });
+
+  it('取消完成 → 触发 writebackStatus（status=active）', async () => {
+    const t = await createDingtalkTask(ctx.repos, { status: 'completed', completedAt: '2026-08-07T09:00:00.000Z' });
+    const res = await request(ctx.app).patch(`/api/tasks/${t.id}`).send({ status: 'active' });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('active');
+    expect(ctx.todoSyncService.writebackStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'active' })
+    );
+  });
+
+  it('回写失败 → sync_writeback=pending，本地状态仍更新', async () => {
+    const t = await createDingtalkTask(ctx.repos);
+    ctx.todoSyncService.writebackStatus.mockRejectedValue(new Error('dws 不可用'));
+    const res = await request(ctx.app).patch(`/api/tasks/${t.id}`).send({ status: 'completed' });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('completed');
+    expect(res.body.syncWriteback).toBe('pending');
+  });
+
+  it('本地任务 PATCH 不触发回写', async () => {
+    const t = await ctx.repos.tasks.create({ title: '本地', important: false, urgent: false });
+    await request(ctx.app).patch(`/api/tasks/${t.id}`).send({ status: 'completed' });
+    expect(ctx.todoSyncService.writebackStatus).not.toHaveBeenCalled();
   });
 });

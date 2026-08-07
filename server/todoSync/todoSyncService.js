@@ -69,9 +69,39 @@ export function createTodoSyncService({ client, repos, profile = '', now = () =>
     return softDeleted;
   }
 
-  /** 占位实现（Task 6 替换）：重试 pending 回写。 */
+  /** 回写重试：sync_writeback=pending 的任务按本地当前状态调 task done，成功清除标记（无限重试）。 */
   async function retryWritebacks() {
-    return { retried: 0, pending: 0 };
+    const localList = await repos.tasks.list();
+    let retried = 0;
+    let pending = 0;
+    for (const t of localList) {
+      if (t.source !== 'dingtalk' || t.syncWriteback !== 'pending') continue;
+      try {
+        await client.setTaskDone({
+          taskId: t.dingtalkTaskId,
+          status: t.status === 'completed',
+          profile,
+        });
+        await repos.tasks.setSyncWriteback(t.id, 'none');
+        retried += 1;
+      } catch {
+        pending += 1; // 下次轮询继续重试，不设上限
+      }
+    }
+    return { retried, pending };
+  }
+
+  /** PATCH 回写：钉钉任务完成/取消完成即时写钉钉，成功清除标记，失败抛出（由路由置 pending）。 */
+  async function writebackStatus({ task, status }) {
+    if (task?.source !== 'dingtalk' || !task.dingtalkTaskId) return;
+    if (status !== 'completed' && status !== 'active') return;
+    if (task.status === status) return; // 状态无变化不写钉钉（active→active 等）
+    await client.setTaskDone({
+      taskId: task.dingtalkTaskId,
+      status: status === 'completed',
+      profile,
+    });
+    await repos.tasks.setSyncWriteback(task.id, 'none');
   }
 
   /** upsert：新任务并发取详情（限 5）后插入；已存在则更新 subject/dueTime/syncOrigin 并重置四象限。 */
@@ -166,5 +196,7 @@ export function createTodoSyncService({ client, repos, profile = '', now = () =>
     throttleSkip,
     withInFlightGuard,
     syncFromDingtalk,
+    retryWritebacks,
+    writebackStatus,
   };
 }

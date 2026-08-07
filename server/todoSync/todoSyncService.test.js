@@ -235,3 +235,93 @@ describe('软删 / 节流 / 互斥', () => {
     expect(ctx.service.getStatus().syncedAt).toBeNull();
   });
 });
+
+describe('writebackStatus 与回写重试', () => {
+  it('writebackStatus 完成 → setTaskDone(true) 并保持 none', async () => {
+    const ctx = makeCtx();
+    const t = await ctx.repos.tasks.create({
+      title: 'x', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', status: 'active', syncWriteback: 'none',
+    });
+    await ctx.service.writebackStatus({ task: t, status: 'completed' });
+    expect(ctx.client.setTaskDone).toHaveBeenCalledWith({ taskId: 'dt-1', status: true, profile: 'corp:user' });
+    expect((await ctx.repos.tasks.get(t.id)).syncWriteback).toBe('none');
+  });
+
+  it('writebackStatus 取消完成 → setTaskDone(false)', async () => {
+    const ctx = makeCtx();
+    const t = await ctx.repos.tasks.create({
+      title: 'x', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', status: 'completed',
+      completedAt: '2026-08-07T09:00:00.000Z', syncWriteback: 'none',
+    });
+    await ctx.service.writebackStatus({ task: t, status: 'active' });
+    expect(ctx.client.setTaskDone).toHaveBeenCalledWith({ taskId: 'dt-1', status: false, profile: 'corp:user' });
+  });
+
+  it('writebackStatus 失败向上抛，标记由路由层置 pending（本层不清除）', async () => {
+    const ctx = makeCtx();
+    const t = await ctx.repos.tasks.create({
+      title: 'x', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', status: 'active', syncWriteback: 'none',
+    });
+    ctx.client.setTaskDone.mockRejectedValue(new Error('dws 不可用'));
+    await expect(ctx.service.writebackStatus({ task: t, status: 'completed' })).rejects.toThrow('dws 不可用');
+    expect((await ctx.repos.tasks.get(t.id)).syncWriteback).toBe('none');
+  });
+
+  it('writebackStatus 非钉钉任务 / 非完成状态不调 dws', async () => {
+    const ctx = makeCtx();
+    const local = await ctx.repos.tasks.create({ title: '本地', important: false, urgent: false });
+    await ctx.service.writebackStatus({ task: local, status: 'completed' });
+    const dt = await ctx.repos.tasks.create({
+      title: 'x', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', status: 'active', syncWriteback: 'none',
+    });
+    await ctx.service.writebackStatus({ task: dt, status: 'active' }); // active→active 无变化
+    expect(ctx.client.setTaskDone).not.toHaveBeenCalled();
+  });
+
+  it('syncFromDingtalk 重试 pending：成功清除标记，失败计数保留', async () => {
+    const ctx = makeCtx();
+    await ctx.repos.tasks.create({
+      title: 'a', important: true, urgent: true, dingtalkTaskId: 'dt-a', source: 'dingtalk',
+      status: 'completed', completedAt: '2026-08-07T09:00:00.000Z', syncWriteback: 'pending',
+    });
+    await ctx.repos.tasks.create({
+      title: 'b', important: true, urgent: true, dingtalkTaskId: 'dt-b', source: 'dingtalk',
+      status: 'active', syncWriteback: 'pending',
+    });
+    ctx.client.listMyTasks.mockResolvedValue([]);
+    // 重试迭代顺序与 in-memory list 的 id 降序相关；用 taskId 决定成败，避免顺序依赖
+    ctx.client.setTaskDone.mockImplementation(async ({ taskId }) => {
+      if (taskId === 'dt-a') return {};
+      throw new Error('boom');
+    });
+    const result = await ctx.service.syncFromDingtalk();
+    expect(result.writeback).toEqual({ retried: 1, pending: 1 });
+    expect((await ctx.repos.tasks.getByDingtalkTaskId('dt-a')).syncWriteback).toBe('none');
+    expect((await ctx.repos.tasks.getByDingtalkTaskId('dt-b')).syncWriteback).toBe('pending');
+    expect(ctx.client.setTaskDone).toHaveBeenCalledWith({ taskId: 'dt-a', status: true, profile: 'corp:user' });
+    expect(ctx.client.setTaskDone).toHaveBeenCalledWith({ taskId: 'dt-b', status: false, profile: 'corp:user' });
+  });
+
+  it('pending 重试成功后再允许同步覆盖（钉钉侧恢复未完成 → 本地回 active）', async () => {
+    const ctx = makeCtx();
+    await ctx.repos.tasks.create({
+      title: 'x', important: true, urgent: true, dingtalkTaskId: 'dt-1', source: 'dingtalk',
+      status: 'completed', completedAt: '2026-08-07T09:00:00.000Z', syncWriteback: 'pending',
+    });
+    ctx.client.setTaskDone.mockResolvedValue({});
+    // 第一轮：重试成功清除标记（upsert 期间仍受 pending 保护）
+    ctx.client.listMyTasks.mockResolvedValue([]);
+    await ctx.service.syncFromDingtalk();
+    expect((await ctx.repos.tasks.getByDingtalkTaskId('dt-1')).syncWriteback).toBe('none');
+    // 第二轮：标记已清除，钉钉侧未完成 → 允许覆盖回 active
+    ctx.client.listMyTasks
+      .mockResolvedValueOnce([{ taskId: 'dt-1', subject: 'x', isDone: false, dueTime: null, bizTag: null }])
+      .mockResolvedValueOnce([]);
+    await ctx.service.syncFromDingtalk();
+    expect((await ctx.repos.tasks.getByDingtalkTaskId('dt-1')).status).toBe('active');
+  });
+});
