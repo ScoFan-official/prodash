@@ -1,5 +1,7 @@
 import { aggregateToday, formatDuration, formatPercent } from '../lib/timeStats'
 import { QUADRANTS, getQuadrantKey } from '../lib/quadrants'
+import Card from './primitives/Card'
+import Badge from './primitives/Badge'
 
 const QUADRANT_KEYS = [
   'important-urgent',
@@ -165,20 +167,24 @@ export default function TimeStatsView({ active, records, todos }) {
   const { date, totalHumanMs, totalAgentMs, totalMs, byTask, byCategory } = stats
 
   return (
-    <section className="time-stats-view" aria-label="统计视图">
+    <section className="time-stats-view time-stats" aria-label="统计视图">
       <header className="time-stats-view__header">
         <h2>今日工时统计</h2>
         <span className="time-stats-view__date">{date}</span>
       </header>
 
-      <div className="stats-summary">
-        <div className="stat-card stat-card--total">
-          <span className="stat-card__label">今日总工时</span>
-          <span className="stat-card__value">{formatDuration(totalMs)}</span>
-        </div>
-        <div className="stat-card stat-card--human">
-          <span className="stat-card__label">人工</span>
-          <span className="stat-card__value">{formatDuration(totalHumanMs)}</span>
+      <div className="stats-summary time-stats__cards">
+        <Card className="stat-card stat-card--total time-stats__card">
+          <Badge variant="default" className="stat-card__label time-stats__label">
+            今日总工时
+          </Badge>
+          <span className="stat-card__value time-stats__value">{formatDuration(totalMs)}</span>
+        </Card>
+        <Card className="stat-card stat-card--human time-stats__card">
+          <Badge variant="default" className="stat-card__label time-stats__label">
+            人工
+          </Badge>
+          <span className="stat-card__value time-stats__value">{formatDuration(totalHumanMs)}</span>
           <span className="stat-card__percent">
             {formatPercent(totalHumanMs, totalMs)}
           </span>
@@ -188,10 +194,12 @@ export default function TimeStatsView({ active, records, todos }) {
               style={{ width: formatPercent(totalHumanMs, totalMs) }}
             />
           </div>
-        </div>
-        <div className="stat-card stat-card--agent">
-          <span className="stat-card__label">Agent</span>
-          <span className="stat-card__value">{formatDuration(totalAgentMs)}</span>
+        </Card>
+        <Card className="stat-card stat-card--agent time-stats__card">
+          <Badge variant="default" className="stat-card__label time-stats__label">
+            Agent
+          </Badge>
+          <span className="stat-card__value time-stats__value">{formatDuration(totalAgentMs)}</span>
           <span className="stat-card__percent">
             {formatPercent(totalAgentMs, totalMs)}
           </span>
@@ -201,7 +209,7 @@ export default function TimeStatsView({ active, records, todos }) {
               style={{ width: formatPercent(totalAgentMs, totalMs) }}
             />
           </div>
-        </div>
+        </Card>
       </div>
 
       <div className="stats-section">
