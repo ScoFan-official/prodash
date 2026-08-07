@@ -130,6 +130,20 @@ export default function TodoView() {
     }
   }, [])
 
+  // 手动同步后刷新任务列表：成功/失败均重新拉取（导入或部分导入立即可见，无需刷新页面）。
+  // mount 拉取逻辑保留在下方 useEffect（带 cancelled 防卸载后 setState）；此处供 handleSync 复用。
+  function refreshTasks() {
+    return getTasks()
+      .then((tasks) => {
+        setTodos((tasks ?? []).filter((t) => t.status !== 'deleted').map(normalizeTask))
+        setLoadError(false)
+      })
+      .catch(() => {
+        setTodos([])
+        setLoadError(true)
+      })
+  }
+
   function handleSync() {
     setSyncState('syncing')
     setSyncMessage('')
@@ -142,10 +156,12 @@ export default function TodoView() {
           setSyncMessage(`同步成功，导入 ${r?.imported ?? 0} / 更新 ${r?.updated ?? 0}`)
           if (r?.syncedAt) setLastSyncAt(r.syncedAt)
         }
+        refreshTasks()
       })
       .catch(() => {
         setSyncState('failed')
         setSyncMessage('钉钉同步失败，请稍后重试')
+        refreshTasks()
       })
   }
 
@@ -168,7 +184,7 @@ export default function TodoView() {
           {syncMessage}
         </p>
       )}
-      {syncState === 'failed' && (
+      {syncState === 'failed' && syncMessage && (
         <p className="save-error" role="alert">
           {syncMessage}
         </p>

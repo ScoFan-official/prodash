@@ -385,4 +385,24 @@ describe('TodoView 钉钉同步', () => {
     render(<TodoView />)
     expect(await screen.findByText(/上次同步/)).toBeInTheDocument()
   })
+
+  it('同步成功后重新拉取任务列表（导入的任务可见）', async () => {
+    apiMocks.syncTodos.mockResolvedValue({
+      syncedAt: '2026-08-07T12:00:00.000Z',
+      imported: 1,
+      updated: 0,
+      softDeleted: 0,
+      writeback: { retried: 0, pending: 0 },
+    })
+    // getTasks 第二次调用（同步后刷新）返回新导入的钉钉任务
+    let callCount = 0
+    apiMocks.getTasks.mockImplementation(async () => {
+      callCount += 1
+      if (callCount === 1) return [] // 初始 mount
+      return [{ id: 9, title: '领导任务', status: 'active', important: true, urgent: true, source: 'dingtalk', sourceLeader: '闫佳琪', dueTime: null, dingtalkTaskId: 'dt-1', syncWriteback: 'none' }]
+    })
+    render(<TodoView />)
+    await userEvent.setup().click(screen.getByRole('button', { name: /同步钉钉待办/ }))
+    expect(await screen.findByText('领导任务')).toBeInTheDocument()
+  })
 })

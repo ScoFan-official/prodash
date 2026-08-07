@@ -99,6 +99,10 @@ export function createApp({ repos, reportRouter, todoSyncRouter, todoSyncService
         delete body.title;
         delete body.important;
         delete body.urgent;
+        // 删除锁：PATCH status=deleted 与 DELETE 同权拒绝（防止补丁绕过删除锁）
+        if (body.status === 'deleted') {
+          return res.status(403).json({ error: '钉钉同步任务不可删除' });
+        }
       }
       const check = validateTaskPatch(body);
       // 钉钉任务：锁定字段被忽略后无剩余字段 → 幂等返回现状（不报 400）

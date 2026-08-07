@@ -430,4 +430,15 @@ describe('钉钉任务锁定', () => {
       dueTime: '2026-08-08T10:00:00.000Z', syncOrigin: 'certify_todo', syncWriteback: 'pending',
     });
   });
+
+  it('PATCH 钉钉任务 status=deleted → 403（禁止通过补丁绕过删除锁）', async () => {
+    const t = await ctx.repos.tasks.create({
+      title: '领导任务', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', status: 'active', syncWriteback: 'none',
+    });
+    const res = await request(ctx.app).patch(`/api/tasks/${t.id}`).send({ status: 'deleted' });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('钉钉同步任务不可删除');
+    expect((await ctx.repos.tasks.get(t.id)).status).toBe('active');
+  });
 });

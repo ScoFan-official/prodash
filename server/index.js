@@ -126,10 +126,14 @@ const app = createApp({ repos, reportRouter, todoSyncRouter, todoSyncService });
 if (process.env.NODE_ENV !== 'test') {
   try {
     startScheduler({ repos, service, cron: process.env.REPORT_CRON });
-    startTodoSync({
-      cron: process.env.DINGTALK_TODO_SYNC_CRON,
-      run: () => todoSyncService.syncFromDingtalk(),
-    });
+    // 未配置 DINGTALK_TODO_PROFILE 时不启动 todo-sync 定时器（避免每 30 分钟空转报错）；
+    // 未配置时的 fail-fast 提示见上方 index.js:111-116。
+    if (dingtalkTodoProfile) {
+      startTodoSync({
+        cron: process.env.DINGTALK_TODO_SYNC_CRON,
+        run: () => todoSyncService.syncFromDingtalk(),
+      });
+    }
     console.log(
       `[prodash-server] scheduler started (report=${process.env.REPORT_CRON || '0 21 * * *'}, ` +
         `todo-sync=${process.env.DINGTALK_TODO_SYNC_CRON || '*/30 * * * *'})`
