@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TodoView from './TodoView'
+import QuadrantView from './QuadrantView'
 
 const { mockTasks, apiMocks } = vi.hoisted(() => {
   const tasks = []
@@ -132,4 +133,27 @@ describe('四象限视图', () => {
     expect(within(cell).getByText('格子内保护')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toBeInTheDocument()
   })
+})
+
+it('钉钉来源任务显示在「重要·紧急」格', () => {
+  const todos = [
+    {
+      id: 1, text: '领导任务', done: false, important: true, urgent: true,
+      source: 'dingtalk', sourceLeader: '闫佳琪', dueTime: null,
+      dingtalkTaskId: 'dt-1', syncWriteback: 'none',
+    },
+    { id: 2, text: '本地任务', done: false, important: false, urgent: false, source: 'local' },
+  ]
+  render(
+    <QuadrantView
+      todos={todos}
+      onToggle={() => {}}
+      onDelete={() => {}}
+      timerCallbacks={{}}
+      getTodoSummary={() => null}
+    />,
+  )
+  const cell = screen.getByTestId('quadrant-important-urgent')
+  expect(within(cell).getByText('领导任务')).toBeInTheDocument()
+  expect(within(cell).getByText('来自 闫佳琪')).toBeInTheDocument()
 })

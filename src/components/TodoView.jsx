@@ -19,6 +19,11 @@ function normalizeTask(task) {
     urgent: Boolean(task.urgent),
     createdAt: task.createdAt,
     completedAt: task.completedAt,
+    source: task.source ?? 'local',
+    sourceLeader: task.sourceLeader ?? null,
+    dueTime: task.dueTime ?? null,
+    dingtalkTaskId: task.dingtalkTaskId ?? null,
+    syncWriteback: task.syncWriteback ?? 'none',
   }
 }
 
