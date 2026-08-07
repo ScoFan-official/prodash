@@ -371,3 +371,63 @@ describe('钉钉任务 PATCH 回写', () => {
     expect(ctx.todoSyncService.writebackStatus).not.toHaveBeenCalled();
   });
 });
+
+describe('钉钉任务锁定', () => {
+  it('DELETE 钉钉来源任务 → 403，且未被软删', async () => {
+    const t = await ctx.repos.tasks.create({
+      title: '领导任务', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', sourceLeader: '闫佳琪',
+      dueTime: null, syncOrigin: null, syncWriteback: 'none', status: 'active',
+    });
+    const res = await request(ctx.app).delete(`/api/tasks/${t.id}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('钉钉同步任务不可删除');
+    expect((await ctx.repos.tasks.get(t.id)).status).toBe('active');
+  });
+
+  it('本地任务仍可删除', async () => {
+    const t = await ctx.repos.tasks.create({ title: '本地', important: false, urgent: false });
+    const res = await request(ctx.app).delete(`/api/tasks/${t.id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('deleted');
+  });
+
+  it('PATCH 钉钉任务忽略 title/important/urgent（强制锁定）', async () => {
+    const t = await ctx.repos.tasks.create({
+      title: '领导任务', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', status: 'active', syncWriteback: 'none',
+    });
+    const res = await request(ctx.app)
+      .patch(`/api/tasks/${t.id}`)
+      .send({ title: '篡改标题', important: false, urgent: false, status: 'completed' });
+    expect(res.status).toBe(200);
+    expect(res.body.title).toBe('领导任务');
+    expect(res.body.important).toBe(true);
+    expect(res.body.urgent).toBe(true);
+    expect(res.body.status).toBe('completed'); // 状态字段仍生效（回写由 Task 6 处理）
+  });
+
+  it('PATCH 钉钉任务只传锁定字段 → 200 返回现状（幂等）', async () => {
+    const t = await ctx.repos.tasks.create({
+      title: '领导任务', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', status: 'active', syncWriteback: 'none',
+    });
+    const res = await request(ctx.app).patch(`/api/tasks/${t.id}`).send({ title: '篡改标题' });
+    expect(res.status).toBe(200);
+    expect(res.body.title).toBe('领导任务');
+  });
+
+  it('GET /api/tasks 返回同步字段（camelCase）', async () => {
+    await ctx.repos.tasks.create({
+      title: '领导任务', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', sourceLeader: '闫佳琪',
+      dueTime: '2026-08-08T10:00:00.000Z', syncOrigin: 'certify_todo',
+      syncWriteback: 'pending', status: 'active',
+    });
+    const res = await request(ctx.app).get('/api/tasks');
+    expect(res.body[0]).toMatchObject({
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', sourceLeader: '闫佳琪',
+      dueTime: '2026-08-08T10:00:00.000Z', syncOrigin: 'certify_todo', syncWriteback: 'pending',
+    });
+  });
+});

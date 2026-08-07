@@ -101,6 +101,10 @@ export function createApp({ repos, reportRouter, todoSyncRouter, todoSyncService
         delete body.urgent;
       }
       const check = validateTaskPatch(body);
+      // 钉钉任务：锁定字段被忽略后无剩余字段 → 幂等返回现状（不报 400）
+      if (check.error && existing.source === 'dingtalk' && Object.keys(body).length === 0) {
+        return res.json(existing);
+      }
       if (check.error) return res.status(400).json({ error: check.error });
       // 即时回写：完成/取消完成双向对称；失败置 pending（本地状态照常更新，乐观生效）
       if (todoSyncService && existing.source === 'dingtalk' && 'status' in check.value) {
@@ -120,9 +124,12 @@ export function createApp({ repos, reportRouter, todoSyncRouter, todoSyncService
     ah(async (req, res) => {
       const id = parseId(req.params.id);
       if (!id) return res.status(400).json({ error: 'invalid task id' });
-      const task = await repos.tasks.softDelete(id);
+      const task = await repos.tasks.get(id);
       if (!task) return res.status(404).json({ error: 'Not Found' });
-      res.json(task);
+      if (task.source === 'dingtalk') {
+        return res.status(403).json({ error: '钉钉同步任务不可删除' });
+      }
+      res.json(await repos.tasks.softDelete(id));
     })
   );
 
