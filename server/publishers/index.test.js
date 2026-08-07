@@ -77,6 +77,23 @@ describe('DwsCliPublisher', () => {
     expect(fs.existsSync(path.dirname(tmpFile))).toBe(false);
   });
 
+  it('配置 profile 时 create/update 均追加 --profile（跨组织发布必需）', async () => {
+    const execFileImpl = vi
+      .fn()
+      .mockResolvedValue({ stdout: JSON.stringify({ nodeId: 'abc123', url: 'https://wiki.example/doc/1' }), stderr: '' });
+    const p = new DwsCliPublisher({
+      wsId: 'WS1', folderId: 'F1', profile: 'corp1:user1', dwsBin: 'dws', execFileImpl,
+    });
+
+    await p.publish({ date: '2026-08-06', title: '日报', content: 'c' });
+    await p.publish({ date: '2026-08-06', title: '日报', content: 'c2', existingNodeId: 'old-node' });
+
+    expect(execFileImpl.mock.calls[0][1]).toContain('--profile');
+    expect(execFileImpl.mock.calls[0][1]).toContain('corp1:user1');
+    expect(execFileImpl.mock.calls[1][1]).toContain('--profile');
+    expect(execFileImpl.mock.calls[1][1]).toContain('corp1:user1');
+  });
+
   it('update：existingNodeId 存在时调用 dws doc update --node', async () => {
     const execFileImpl = vi.fn().mockResolvedValue({
       stdout: `created: ${JSON.stringify({ node_id: 'n9', doc_url: 'https://x/9' })}`,

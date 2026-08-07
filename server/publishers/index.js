@@ -82,14 +82,17 @@ export class DwsCliPublisher {
    * @param {object} opts
    * @param {string} opts.wsId   工作空间 ID（创建必需）
    * @param {string} [opts.folderId] 文件夹 ID（可选）
+   * @param {string} [opts.profile] 目标组织 profile（corpId:userId）；不传则用 dws 全局默认 profile
+   *   —— 注意：跨组织发布必须显式传，否则 forbidden.accessDenied
    * @param {string} [opts.dwsBin]  dws 可执行（或解释器，如 node）路径，默认 'dws'
    * @param {string} [opts.dwsScript] dws CLI 入口 JS 路径；提供时按 `dwsBin dwsScript <args>` 调用
    *   （Windows 下 dws 常以 .cmd/.bat shim 分发，execFile 直调会 ENOENT，故用 node + dws.js）
    * @param {Function} [opts.execFileImpl] 测试注入的 execFile 实现
    */
-  constructor({ wsId, folderId, dwsBin = 'dws', dwsScript, execFileImpl } = {}) {
+  constructor({ wsId, folderId, profile, dwsBin = 'dws', dwsScript, execFileImpl } = {}) {
     this.wsId = wsId;
     this.folderId = folderId;
+    this.profile = profile;
     this.dwsBin = dwsBin;
     this.dwsScript = dwsScript;
     this.execFile = execFileImpl || execFileAsync;
@@ -125,6 +128,8 @@ export class DwsCliPublisher {
         if (this.folderId) args.push('--folder', String(this.folderId));
         args.push('--format', 'json');
       }
+      // 跨组织发布必须显式 --profile（默认 profile 可能属于其他组织 → forbidden.accessDenied）
+      if (this.profile) args.push('--profile', String(this.profile));
 
       const { stdout } = await this.execFile(
         this.dwsBin,
