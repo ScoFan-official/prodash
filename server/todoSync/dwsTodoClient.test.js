@@ -44,7 +44,7 @@ describe('listMyTasks', () => {
     expect(execFile).toHaveBeenCalledTimes(2);
     expect(execFile.mock.calls[0][0]).toBe('node.exe');
     expect(execFile.mock.calls[0][1]).toEqual(expect.arrayContaining([
-      'todo', '+get-my-tasks', '--role-types', 'executor', '--status', 'active',
+      'todo', '+get-my-tasks', '--role-types', 'executor', '--status', 'false',
       '--profile', 'corp:user', '--format', 'json',
     ]));
     expect(execFile.mock.calls[1][1]).toContain('--page');

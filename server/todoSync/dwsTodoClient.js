@@ -95,7 +95,7 @@ export class DwsTodoClient {
       const args = [
         'todo', '+get-my-tasks',
         '--role-types', (Array.isArray(roleTypes) ? roleTypes : [roleTypes]).join(','),
-        '--status', status,
+        '--status', status === 'completed' ? 'true' : 'false', // dws 期望布尔值（true=done, false=todo）
         '--size', String(pageSize),
         '--page', String(page),
         '--profile', p,
