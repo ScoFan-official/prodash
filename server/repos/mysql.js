@@ -6,7 +6,8 @@ import { parseTs, isoToSql, toIso, dayStartUtc, dayEndUtc } from './timeutil.js'
 import { buildSessions } from './session.js';
 
 const TASK_COLUMNS =
-  'id, title, important, urgent, status, created_at, completed_at, deleted_at';
+  'id, title, important, urgent, status, created_at, completed_at, deleted_at, ' +
+  'dingtalk_task_id, source, source_leader, due_time, sync_origin, sync_writeback';
 
 function mapTask(row) {
   return {
@@ -18,6 +19,12 @@ function mapTask(row) {
     createdAt: toIso(row.created_at),
     completedAt: toIso(row.completed_at),
     deletedAt: toIso(row.deleted_at),
+    dingtalkTaskId: row.dingtalk_task_id ?? null,
+    source: row.source ?? 'local',
+    sourceLeader: row.source_leader ?? null,
+    dueTime: toIso(row.due_time),
+    syncOrigin: row.sync_origin ?? null,
+    syncWriteback: row.sync_writeback ?? 'none',
   };
 }
 
@@ -63,22 +70,36 @@ export function createMysqlRepos(pool) {
       );
       return rows.length ? mapTask(rows[0]) : null;
     },
-    async create({ title, important, urgent }) {
+    async create({ title, important, urgent, status = 'active', completedAt = null,
+                   dingtalkTaskId = null, source = 'local', sourceLeader = null,
+                   dueTime = null, syncOrigin = null, syncWriteback = 'none' }) {
       const now = new Date().toISOString();
+      const completedAtIso = status === 'completed' ? toIso(completedAt ?? now) : null;
+      const dueTimeIso = toIso(dueTime);
       const [r] = await pool.execute(
-        `INSERT INTO tasks (title, important, urgent, status, created_at, updated_at)
-         VALUES (?, ?, ?, 'active', ?, ?)`,
-        [title, important ? 1 : 0, urgent ? 1 : 0, isoToSql(now), isoToSql(now)]
+        `INSERT INTO tasks (title, important, urgent, status, created_at, completed_at, updated_at,
+                            dingtalk_task_id, source, source_leader, due_time, sync_origin, sync_writeback)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [title, important ? 1 : 0, urgent ? 1 : 0, status, isoToSql(now),
+         completedAtIso ? isoToSql(completedAtIso) : null, isoToSql(now),
+         dingtalkTaskId, source, sourceLeader, dueTimeIso ? isoToSql(dueTimeIso) : null,
+         syncOrigin, syncWriteback]
       );
       return {
         id: r.insertId,
         title,
         important: !!important,
         urgent: !!urgent,
-        status: 'active',
+        status,
         createdAt: now,
-        completedAt: null,
+        completedAt: completedAtIso,
         deletedAt: null,
+        dingtalkTaskId,
+        source,
+        sourceLeader,
+        dueTime: dueTimeIso,
+        syncOrigin,
+        syncWriteback,
       };
     },
     async update(id, patch) {
@@ -102,13 +123,41 @@ export function createMysqlRepos(pool) {
       if ('status' in patch) {
         sets.push('status = ?');
         params.push(patch.status);
-        if (patch.status === 'completed' && !existing.completedAt) {
+        if (patch.status === 'completed' && !existing.completedAt && !('completedAt' in patch)) {
           const now = new Date().toISOString();
           sets.push('completed_at = ?');
           params.push(isoToSql(now));
-        } else if (patch.status === 'active') {
+        } else if (patch.status === 'active' && !('completedAt' in patch)) {
           sets.push('completed_at = NULL');
         }
+      }
+      if ('dingtalkTaskId' in patch) {
+        sets.push('dingtalk_task_id = ?');
+        params.push(patch.dingtalkTaskId ?? null);
+      }
+      if ('source' in patch) {
+        sets.push('source = ?');
+        params.push(patch.source);
+      }
+      if ('sourceLeader' in patch) {
+        sets.push('source_leader = ?');
+        params.push(patch.sourceLeader ?? null);
+      }
+      if ('dueTime' in patch) {
+        sets.push('due_time = ?');
+        params.push(patch.dueTime ? isoToSql(toIso(patch.dueTime)) : null);
+      }
+      if ('syncOrigin' in patch) {
+        sets.push('sync_origin = ?');
+        params.push(patch.syncOrigin ?? null);
+      }
+      if ('syncWriteback' in patch) {
+        sets.push('sync_writeback = ?');
+        params.push(patch.syncWriteback);
+      }
+      if ('completedAt' in patch) {
+        sets.push('completed_at = ?');
+        params.push(patch.completedAt ? isoToSql(toIso(patch.completedAt)) : null);
       }
       const updatedAt = new Date().toISOString();
       sets.push('updated_at = ?');
@@ -116,6 +165,21 @@ export function createMysqlRepos(pool) {
       params.push(id);
 
       await pool.execute(`UPDATE tasks SET ${sets.join(', ')} WHERE id = ?`, params);
+      return this.get(id);
+    },
+    async getByDingtalkTaskId(taskId) {
+      const [rows] = await pool.execute(
+        `SELECT ${TASK_COLUMNS} FROM tasks WHERE dingtalk_task_id = ?`,
+        [taskId]
+      );
+      return rows.length ? mapTask(rows[0]) : null;
+    },
+    async setSyncWriteback(id, status) {
+      const now = new Date().toISOString();
+      await pool.execute(
+        `UPDATE tasks SET sync_writeback = ?, updated_at = ? WHERE id = ?`,
+        [status, isoToSql(now), id]
+      );
       return this.get(id);
     },
     async softDelete(id) {

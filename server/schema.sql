@@ -15,6 +15,12 @@ CREATE TABLE IF NOT EXISTS tasks (
   completed_at DATETIME(3) NULL,
   deleted_at DATETIME(3) NULL,
   updated_at DATETIME(3) NOT NULL,
+  dingtalk_task_id VARCHAR(64) NULL UNIQUE,
+  source ENUM('local','dingtalk') NOT NULL DEFAULT 'local',
+  source_leader VARCHAR(100) NULL,
+  due_time DATETIME(3) NULL,
+  sync_origin VARCHAR(100) NULL,
+  sync_writeback ENUM('none','pending') NOT NULL DEFAULT 'none',
   INDEX idx_tasks_status_created (status, created_at),
   INDEX idx_tasks_status_completed (status, completed_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

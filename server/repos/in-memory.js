@@ -25,17 +25,25 @@ export function createInMemoryRepos() {
       const t = tasks.find((x) => x.id === id);
       return t ? clone(t) : null;
     },
-    async create({ title, important, urgent }) {
+    async create({ title, important, urgent, status = 'active', completedAt = null,
+                   dingtalkTaskId = null, source = 'local', sourceLeader = null,
+                   dueTime = null, syncOrigin = null, syncWriteback = 'none' }) {
       const now = new Date().toISOString();
       const t = {
         id: taskSeq++,
         title,
         important: !!important,
         urgent: !!urgent,
-        status: 'active',
+        status,
         createdAt: now,
-        completedAt: null,
+        completedAt,
         deletedAt: null,
+        dingtalkTaskId,
+        source,
+        sourceLeader,
+        dueTime,
+        syncOrigin,
+        syncWriteback,
       };
       tasks.push(t);
       return clone(t);
@@ -46,14 +54,31 @@ export function createInMemoryRepos() {
       if ('title' in patch) t.title = patch.title;
       if ('important' in patch) t.important = !!patch.important;
       if ('urgent' in patch) t.urgent = !!patch.urgent;
+      if ('dingtalkTaskId' in patch) t.dingtalkTaskId = patch.dingtalkTaskId ?? null;
+      if ('source' in patch) t.source = patch.source;
+      if ('sourceLeader' in patch) t.sourceLeader = patch.sourceLeader ?? null;
+      if ('dueTime' in patch) t.dueTime = patch.dueTime ?? null;
+      if ('syncOrigin' in patch) t.syncOrigin = patch.syncOrigin ?? null;
+      if ('syncWriteback' in patch) t.syncWriteback = patch.syncWriteback;
       if ('status' in patch) {
         t.status = patch.status;
-        if (patch.status === 'completed' && !t.completedAt) {
+        if (patch.status === 'completed' && !t.completedAt && !('completedAt' in patch)) {
           t.completedAt = new Date().toISOString();
-        } else if (patch.status === 'active') {
+        } else if (patch.status === 'active' && !('completedAt' in patch)) {
           t.completedAt = null;
         }
       }
+      if ('completedAt' in patch) t.completedAt = patch.completedAt;
+      return clone(t);
+    },
+    async getByDingtalkTaskId(taskId) {
+      const t = tasks.find((x) => x.dingtalkTaskId === taskId);
+      return t ? clone(t) : null;
+    },
+    async setSyncWriteback(id, status) {
+      const t = tasks.find((x) => x.id === id);
+      if (!t) return null;
+      t.syncWriteback = status;
       return clone(t);
     },
     async softDelete(id) {
