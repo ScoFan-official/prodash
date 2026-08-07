@@ -1,44 +1,15 @@
-import { useState } from 'react'
-import TodoView from './components/TodoView'
-import ReportView from './components/report/ReportView'
-import PlaceholderView from './components/PlaceholderView'
-
-const TABS = [
-  { key: 'todo', label: '待办' },
-  { key: 'report', label: '日报' },
-  { key: 'notes', label: '笔记' },
-  { key: 'expenses', label: 'Token流水' },
-]
+import { useState } from 'react';
+import AppShell from './components/AppShell';
+import TodoView from './components/TodoView';
+import ReportView from './components/report/ReportView';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('todo')
+  const [activeTab, setActiveTab] = useState('todo');
+
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>效率工作台</h1>
-      </header>
-      <nav className="tab-bar" role="tablist" aria-label="功能导航">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.key}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-      <main className="app-main">
-        {activeTab === 'todo' ? (
-          <TodoView />
-        ) : activeTab === 'report' ? (
-          <ReportView />
-        ) : (
-          <PlaceholderView title={TABS.find((t) => t.key === activeTab).label} />
-        )}
-      </main>
-    </div>
-  )
+    <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
+      {activeTab === 'todo' && <TodoView />}
+      {activeTab === 'report' && <ReportView />}
+    </AppShell>
+  );
 }
