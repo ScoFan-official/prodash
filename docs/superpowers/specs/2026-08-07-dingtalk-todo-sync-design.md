@@ -43,7 +43,7 @@ Prodash v1.0.0 已实现「DB 为主」的四象限待办、双轨计时、Dify 
 - 双向任务创建（个人任务不上钉钉）
 - 钉钉侧计时同步（无此概念）
 - 从 prodash 删除钉钉任务并回写钉钉（钉钉任务在 prodash 不可删除）
-- 跨日完成时间从钉钉回填（钉钉无可靠完成时间）
+- 从钉钉回填**真实完成时刻**（钉钉 `finishTime=0` 不可用；`completed_at` 仅来自本地勾选时刻或同步发现时刻补写，见 §6.2）
 - 循环任务的实例展开（按钉钉返回的每条任务原样导入）
 
 ## 4. 系统架构
@@ -68,13 +68,16 @@ ALTER TABLE tasks
   ADD COLUMN source ENUM('local','dingtalk') NOT NULL DEFAULT 'local',
   ADD COLUMN source_leader VARCHAR(100) NULL,            -- creatorInfo.name（来源领导）
   ADD COLUMN due_time DATETIME(3) NULL,                  -- 钉钉截止时间（仅展示）
+  ADD COLUMN sync_origin VARCHAR(100) NULL,              -- 钉钉 bizTag/source（如 attendance/certify_todo），仅预留分类，不参与逻辑
   ADD COLUMN sync_writeback ENUM('none','pending') NOT NULL DEFAULT 'none';
 ```
 
 约束规则：
 
 - 导入时**强制** `important=1, urgent=1`（锁定「重要·紧急」象限）；每次同步**重置**这两个字段，防误改
-- `completed_at` 只由**本地勾选时刻**写入；钉钉侧完成状态只同步 `status`，不写 `completed_at`
+- **标题锁定**：钉钉来源任务标题不可编辑（PATCH 忽略 `title` 修改），与删除禁用一致，数据完全以钉钉为准
+- **三锁定**：四象限（important/urgent）、标题、删除 全部锁定；计时（开始/暂停）不受影响仍可操作
+- `completed_at` 只由**本地勾选时刻**或**钉钉侧完成发现时刻补写**（见 §6.2）
 - **删除规则**：钉钉来源任务在 prodash **不可删除**（前端按钮禁用 + 后端 `DELETE /api/tasks/:id` 拒绝，双保险）；钉钉侧任务消失由同步软删本地副本（`status='deleted'`），不调钉钉删除接口
 - 软删除本地任务保留 `source_leader` 等元数据
 
@@ -84,37 +87,45 @@ ALTER TABLE tasks
 
 触发：页面加载 + 手动「同步」按钮（POST `/api/todo-sync`）+ 后端每 30 分钟轮询。
 
+**节流**：页面加载触发时，若距上次同步 < 2 分钟则跳过（不重复全量拉取）。同步在后端**异步执行**，不阻塞页面请求。
+
 流程：
 
-1. `todo +get-my-tasks --role-types executor`，**未完成 / 已完成各拉一次**，分页直至取完
+1. `todo +get-my-tasks --role-types executor --profile <DINGTALK_TODO_PROFILE>`，**未完成 / 已完成各拉一次**，分页直至取完
 2. 逐条按 `dingtalk_task_id` upsert：
-   - **新任务**：插入，强制 `important=1, urgent=1`，`source='dingtalk'`；调 `task get` 取 `creatorInfo.name` 填 `source_leader`（失败则留空，不阻塞）
-   - **已存在**：更新 `subject` / `due_time` / 完成状态；每次同步重置 `important/urgent=1`
-3. 钉钉侧两轮查询均消失 → 软删本地副本
+   - **新任务**：插入，强制 `important=1, urgent=1`，`source='dingtalk'`，顺带存 `sync_origin`（bizTag/source）；调 `task get` 取 `creatorInfo.name` 填 `source_leader`（失败则留空，不阻塞），**详情并发获取限 5 个**
+   - **已存在**：更新 `subject` / `due_time` / 完成状态 / `sync_origin`；每次同步重置 `important/urgent=1`
+3. **完成状态保护（pending 不回退）**：轮询更新完成状态时，若本地 `status='completed'` 且 `sync_writeback='pending'`（待回写），则**保留本地状态不回退**；钉钉回写成功后才允许同步覆盖
+4. **软删判定**：钉钉侧**连续 2 次同步**（跨 2 个周期）均查不到才软删本地副本；仅置 `status='deleted'` 保留数据，不提供 UI 恢复入口
 
-### 6.2 回写（即时）
+### 6.2 回写（即时，双向对称）
 
-- prodash 勾选完成钉钉来源任务 → `PATCH /api/tasks/:id`（`status=completed`）→ 后端即时调 `dws todo task done --task-id <id> --status true`
-- 失败 → `sync_writeback='pending'`，下次轮询重试；成功后清除标记
-- **反向**：钉钉侧被标记完成 → 轮询发现 → 本地标记 `status='completed'`，但 **不写** `completed_at`（维持日报口径）
+- prodash 勾选完成钉钉来源任务 → `PATCH /api/tasks/:id`（`status=completed`）→ 后端即时调 `dws todo task done --task-id <id> --status true --profile <DINGTALK_TODO_PROFILE>`
+- **取消完成**：prodash 取消勾选完成 → 即时调 `dws todo task done --task-id <id> --status false`，与完成方向对称
+- 失败 → `sync_writeback='pending'`，下次轮询重试；**无限重试**（数据最终一致，不设上限）；成功后清除标记
+- **回写失败可见性**：前端在任务上显示「同步失败待重试」小标记，用户可感知
+- **反向**：钉钉侧被标记完成 → 轮询发现 → 本地标记 `status='completed'`；若本地无 `completed_at`，用**首次发现时刻补写** `completed_at`（保证领导任务完成记录进入日报）；若本地已有 `completed_at`（本地先勾选）则保留
 
 ### 6.3 来源组织
 
 - 新增 `.env` 变量 `DINGTALK_TODO_PROFILE`（`corpId:userId` 格式）
-- **必须显式配置**：当前 dws 默认 profile 是测试组织（ai日报应用测试），不是工作组织；`.env.example` 默认值为工作组织（亿维融智 `ding4108cf4d27f89345acaaa37764f94726:17857219403578277`）
-- 未配置时沿用 dws 当前默认 profile，并在同步日志中输出醒目告警提示「待办来源为默认 profile，可能非工作组织」；多账号无默认 profile 时同步启动 fail-fast 报错
+- **必须显式配置**：所有 dws todo 调用（拉取 + 回写）均显式传 `--profile`，**不依赖 dws 全局默认 profile**（默认 profile 可能随 `dws profile switch` / token 刷新变化，导致跨组织漂移）
+- 未配置时同步启动 **fail-fast 报错**（不再静默降级）
+- `.env.example` 默认值为工作组织（亿维融智 `ding4108cf4d27f89345acaaa37764f94726:17857219403578277`）
 
 ## 7. 日报口径（今日完成）
 
 1. 钉钉同步任务参与日报数据源：当日完成（本地 `completed_at`）+ 进行中任务均计入，Dify 变量中附带 `source` / `source_leader`
-2. 「今日完成」仅认本地 `completed_at`（用户在本机勾选时刻）；钉钉侧完成的同步任务显示为已完成，但**不计入今日完成统计**
+2. 「今日完成」归属 `completed_at`，其来源优先级：
+   - **本地勾选时刻**（用户在 prodash 勾选完成）
+   - **钉钉侧完成发现时刻补写**：首次发现钉钉侧已完成且本地无 `completed_at` 时，用发现时刻补写——保证领导任务（用户常在钉钉 App 直接勾选完成）的完成记录不缺失
 3. `time_summary` 等计时维度不受影响（计时只在本地）
 
 ## 8. 前端改动
 
 | 位置 | 改动 |
 |---|---|
-| `TodoItem.jsx` / `QuadrantCell.jsx` | 钉钉来源任务：删除按钮禁用 + 来源领导徽标（如「来自 闫佳琪」）+ 截止时间展示 |
+| `TodoItem.jsx` / `QuadrantCell.jsx` | 钉钉来源任务：删除按钮禁用 + 标题不可编辑 + 来源领导徽标（如「来自 闫佳琪」）+ 截止时间展示 + 「同步失败待重试」标记（`sync_writeback=pending` 时） |
 | `TodoView.jsx` | 顶部「同步钉钉待办」按钮 + 上次同步时间；同步中 loading 态；失败提示不阻塞本地使用 |
 | `QuadrantView.jsx` | 钉钉任务固定显示「重要·紧急」格 |
 | 日报 `ReportSourceSummary` | 展示「钉钉任务 N 条」来源统计（可选） |
@@ -143,7 +154,9 @@ ALTER TABLE tasks
 ### 受影响已有接口
 
 - `DELETE /api/tasks/:id`：对 `source='dingtalk'` 返回 `403 { error: '钉钉同步任务不可删除' }`
-- `PATCH /api/tasks/:id`：钉钉来源任务完成时触发回写；`important/urgent` 修改被忽略（服务端强制重置为 1）
+- `PATCH /api/tasks/:id`：
+  - 钉钉来源任务完成时触发回写 `task done --status true`；取消完成触发回写 `--status false`
+  - `title` 修改被忽略（标题锁定）；`important/urgent` 修改被忽略（服务端强制重置为 1）
 
 ## 10. 错误处理
 
@@ -151,39 +164,51 @@ ALTER TABLE tasks
 |---|---|
 | dws token 失效 | 同步失败 → 返回错误 + 保留上次同步时间；前端提示「钉钉同步失败，请稍后重试」，不阻塞本地任务使用 |
 | 单任务 `task get` 失败 | 跳过该任务 `source_leader`（留空），不影响其余任务导入 |
-| 回写失败 | `sync_writeback='pending'` + 下次轮询重试；前端勾选完成即时生效（本地乐观） |
+| 回写失败 | `sync_writeback='pending'` + 下次轮询重试（**无限重试**，数据最终一致）；前端任务上显示「同步失败待重试」标记；本地勾选完成即时生效（乐观） |
 | 钉钉侧无任务 | 返回空增量，不报错 |
-| 多组织无默认账号 | 同步启动 fail-fast 报错，提示配置 `DINGTALK_TODO_PROFILE` |
+| `DINGTALK_TODO_PROFILE` 未配置 | 同步启动 **fail-fast 报错**，提示配置（不再静默用默认 profile） |
 | 调度与同步并发 | 轮询与手动触发互斥（in-flight 标记），避免并发 upsert 竞争 |
 
 ## 11. 测试与验收
 
 ### 后端单元测试
 
-- `DwsTodoClient`：execFile mock 分页解析、`+get-my-tasks` 输出解析、`task done` 参数组装、超时/非 JSON 输出处理
-- `TodoSyncService`：upsert 判重、强制四象限、来源领导提取、钉钉侧消失软删、完成状态双向同步
-- 回写：PATCH 完成触发 `task done`、失败置 `pending`、重试清标记
+- `DwsTodoClient`：execFile mock 分页解析、`+get-my-tasks` 输出解析、`task done` 参数组装（含 `--profile`）、超时/非 JSON 输出处理
+- `TodoSyncService`：upsert 判重、强制四象限、来源领导提取、`sync_origin` 存储、钉钉侧消失软删、完成状态双向同步
+- 回写：PATCH 完成触发 `task done --status true`、取消完成触发 `--status false`、失败置 `pending`、无限重试清标记
+
+### 后端规则测试（grilling 新增）
+
+1. **pending 不回退**：本地 `status=completed` + `sync_writeback=pending` 时，轮询 upsert 不得把任务改回 active
+2. **取消完成回写**：取消勾选完成触发 `task done --status false`，失败置 pending
+3. **二次软删**：第一次同步查不到不软删，连续 2 次查不到才软删
+4. **completed_at 补写**：钉钉侧已完成且本地无 `completed_at` → 用首次发现时刻补写；本地已有则保留
+5. **节流**：距上次同步 < 2 分钟的页面加载触发被跳过
+6. **标题锁定**：PATCH 钉钉任务 `title` 被忽略
+7. **profile fail-fast**：`DINGTALK_TODO_PROFILE` 未配置时同步启动报错
 
 ### 后端路由测试
 
-- `POST /api/todo-sync`：成功 / 空 / token 失效
+- `POST /api/todo-sync`：成功 / 空 / token 失效 / 未配置 profile
 - `DELETE` 拒绝钉钉来源任务（403）
-- `PATCH` 钉钉任务 `important/urgent` 强制重置
+- `PATCH` 钉钉任务 `important/urgent`/`title` 强制忽略并重置
 
 ### 前端测试
 
-- 钉钉任务删除按钮禁用、来源徽标渲染、截止时间展示
+- 钉钉任务删除按钮禁用、标题不可编辑、来源徽标渲染、截止时间展示
 - 同步按钮 loading、成功/失败提示、上次同步时间显示
 - 四象限视图中钉钉任务锁定在「重要·紧急」
+- `sync_writeback=pending` 任务显示「同步失败待重试」标记
 
 ### 手动验收
 
-1. 笔记本启动全链路，配置 `DINGTALK_TODO_PROFILE`（或默认工作组织）
+1. 笔记本启动全链路，配置 `DINGTALK_TODO_PROFILE`（工作组织）
 2. 钉钉侧创建一条指派给本人（齐浩南）的待办 → 页面加载/点同步 → prodash 出现该任务，锁定「重要·紧急」，徽标显示来源领导
-3. prodash 勾选完成 → 钉钉侧该待办变为已完成
-4. 钉钉侧标记另一任务完成 → 轮询后 prodash 显示已完成但不计入当日完成
-5. 钉钉侧删除任务 → 轮询后 prodash 软删该任务
-6. prodash 中钉钉任务无删除按钮；直接调 DELETE 返回 403
+3. prodash 勾选完成 → 钉钉侧该待办变为已完成；取消勾选 → 钉钉侧恢复未完成
+4. 钉钉侧标记另一任务完成 → 轮询后 prodash 显示已完成，且以发现时刻补写 `completed_at` 计入当日完成
+5. 钉钉侧删除任务 → 连续 2 次轮询后 prodash 软删该任务
+6. prodash 中钉钉任务无删除按钮、标题不可编辑；直接调 DELETE 返回 403
+7. 未配置 `DINGTALK_TODO_PROFILE` 启动 → 同步 fail-fast 报错
 
 ## 12. 配置与预配
 
@@ -194,7 +219,7 @@ DINGTALK_TODO_PROFILE=ding4108cf4d27f89345acaaa37764f94726:17857219403578277
 DINGTALK_TODO_SYNC_CRON=*/30 * * * *
 ```
 
-- `DINGTALK_TODO_PROFILE`：来源组织 profile（`corpId:userId` 格式）；**必须显式配置**，未配置则沿用 dws 默认 profile 并告警
+- `DINGTALK_TODO_PROFILE`：来源组织 profile（`corpId:userId` 格式）；**必须显式配置**，未配置则同步启动 fail-fast 报错
 - `DINGTALK_TODO_SYNC_CRON`：拉取轮询 cron，默认每 30 分钟（复用现有 cron 基建）
 
 ## 13. 生产化线索
