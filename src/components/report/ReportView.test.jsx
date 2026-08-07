@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ReportView from './ReportView'
 import * as api from '../../api/client'
@@ -235,7 +235,9 @@ describe('ReportView 日报', () => {
     )
 
     // 立即切到 B 日期，B 加载完成展示 B 内容
-    fireEvent.change(screen.getByLabelText('日期'), { target: { value: dateB } })
+    // （日期选择器已改为 Radix Select：打开下拉并点击对应选项）
+    await userEvent.click(screen.getByRole('combobox'))
+    await userEvent.click(await screen.findByRole('option', { name: dateB }))
     expect(await screen.findByText(/B日期已有内容/)).toBeInTheDocument()
 
     // A 的响应姗姗来迟：应被丢弃，不覆盖 B 视图

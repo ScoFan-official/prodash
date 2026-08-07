@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
 import { listReports } from '../../api/client'
+import Badge from '../primitives/Badge'
 
 const STATUS_LABELS = {
   draft: '草稿',
   generated: '已生成',
   published: '已发布',
   publish_failed: '发布失败',
+}
+
+// 状态徽标配色（走 --badge-color 自定义属性；未映射的状态用默认 Badge 样式）。
+const STATUS_BADGE_COLORS = {
+  published: 'var(--success)',
+  publish_failed: 'var(--danger)',
 }
 
 function statusLabel(status) {
@@ -52,36 +59,42 @@ export default function ReportHistory({ refreshKey = 0 }) {
       {reports.length === 0 ? (
         <p className="report-history-empty">暂无历史日报</p>
       ) : (
-        <table className="report-history-table">
-          <thead>
-            <tr>
-              <th>日期</th>
-              <th>状态</th>
-              <th>版本</th>
-              <th>知识库链接</th>
-              <th>更新时间</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map((report) => (
-              <tr key={report.date}>
-                <td>{report.date}</td>
-                <td>{statusLabel(report.status)}</td>
-                <td>{report.version ?? '—'}</td>
-                <td>
-                  {report.docUrl ? (
-                    <a href={report.docUrl} target="_blank" rel="noreferrer">
-                      在钉钉知识库查看
-                    </a>
-                  ) : (
-                    '—'
-                  )}
-                </td>
-                <td>{formatDateTime(report.updatedAt)}</td>
+        <div className="table-container">
+          <table className="report-history-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>状态</th>
+                <th>版本</th>
+                <th>知识库链接</th>
+                <th>更新时间</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {reports.map((report) => (
+                <tr key={report.date}>
+                  <td>{report.date}</td>
+                  <td>
+                    <Badge color={STATUS_BADGE_COLORS[report.status]}>
+                      {statusLabel(report.status)}
+                    </Badge>
+                  </td>
+                  <td>{report.version ?? '—'}</td>
+                  <td>
+                    {report.docUrl ? (
+                      <a href={report.docUrl} target="_blank" rel="noreferrer">
+                        在钉钉知识库查看
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td>{formatDateTime(report.updatedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

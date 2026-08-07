@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { getReportSource, getReport, generateReport, publishReport, saveExtra } from '../../api/client'
+import Banner from '../primitives/Banner'
+import Button from '../primitives/Button'
+import Skeleton from '../primitives/Skeleton'
 import ReportDateSelector from './ReportDateSelector'
 import ReportSourceSummary from './ReportSourceSummary'
 import ReportExtraInput from './ReportExtraInput'
@@ -196,80 +199,77 @@ export default function ReportView() {
 
   return (
     <section className="report-view">
-      <h2>每日日报</h2>
-      <ReportDateSelector value={date} onChange={handleDateChange} />
-      <label className="report-include-deleted">
-        <input
-          type="checkbox"
-          checked={includeDeleted}
-          onChange={(e) => setIncludeDeleted(e.target.checked)}
-        />
-        日报中包含已删除任务
-      </label>
-      {busy && phase === 'loading' && <p className="report-loading">加载中…</p>}
-      {showContent && (
-        <>
-          <ReportSourceSummary
-            source={
-              source || { completedTodos: [], pendingTodos: [], totalHumanMs: 0, totalAgentMs: 0 }
-            }
+      <div className="report-view__section">
+        <h2>每日日报</h2>
+        <ReportDateSelector value={date} onChange={handleDateChange} />
+        <label className="report-include-deleted">
+          <input
+            type="checkbox"
+            checked={includeDeleted}
+            onChange={(e) => setIncludeDeleted(e.target.checked)}
           />
-          <ReportExtraInput value={extraWork} onChange={setExtraWork} />
-          {existing ? (
-            <div className="report-action-area">
-              <ReportResult report={existing.content} onCopy={handleCopy} copied={copied} />
-              <p className="report-meta">
-                版本：{existing.version ?? '—'}，状态：{statusLabel(existing.status)}
-              </p>
-              {existing.docUrl && (
-                <a
-                  className="report-doc-link"
-                  href={existing.docUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  在钉钉知识库查看
-                </a>
-              )}
-              {copyFailed && (
-                <p className="report-error" role="alert">
-                  请手动选择并复制
+          日报中包含已删除任务
+        </label>
+        {busy && phase === 'loading' && (
+          <div className="report-view__loading">
+            <Skeleton width="100%" height={48} />
+            <Skeleton width="100%" height={48} />
+          </div>
+        )}
+        {showContent && (
+          <>
+            <ReportSourceSummary
+              source={
+                source || { completedTodos: [], pendingTodos: [], totalHumanMs: 0, totalAgentMs: 0 }
+              }
+            />
+            <ReportExtraInput value={extraWork} onChange={setExtraWork} />
+            {existing ? (
+              <div className="report-action-area">
+                <ReportResult report={existing.content} onCopy={handleCopy} copied={copied} />
+                <p className="report-meta">
+                  版本：{existing.version ?? '—'}，状态：{statusLabel(existing.status)}
                 </p>
-              )}
-              {errorMessage && (
-                <p className="report-error" role="alert">
-                  {errorMessage}
-                </p>
-              )}
-              <div className="report-actions">
-                <button type="button" onClick={handleRegenerate} disabled={busy}>
-                  重新生成
-                </button>
-                {canRepublish && (
-                  <button type="button" onClick={handlePublish} disabled={busy}>
-                    补发
-                  </button>
+                {existing.docUrl && (
+                  <a
+                    className="report-doc-link"
+                    href={existing.docUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    在钉钉知识库查看
+                  </a>
                 )}
-                <button type="button" onClick={handleSaveExtra} disabled={busy}>
-                  保存补充内容
-                </button>
+                {copyFailed && <Banner variant="error">请手动选择并复制</Banner>}
+                {errorMessage && <Banner variant="error">{errorMessage}</Banner>}
+                <div className="report-actions">
+                  <Button variant="outline" onClick={handleRegenerate} disabled={busy}>
+                    重新生成
+                  </Button>
+                  {canRepublish && (
+                    <Button variant="outline" onClick={handlePublish} disabled={busy}>
+                      补发
+                    </Button>
+                  )}
+                  <Button variant="ghost" onClick={handleSaveExtra} disabled={busy}>
+                    保存补充内容
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="report-action-area">
-              {errorMessage && (
-                <p className="report-error" role="alert">
-                  {errorMessage}
-                </p>
-              )}
-              <button type="button" onClick={handleGenerate} disabled={busy}>
-                生成日报
-              </button>
-            </div>
-          )}
-        </>
-      )}
-      <ReportHistory refreshKey={historyRefreshKey} />
+            ) : (
+              <div className="report-action-area">
+                {errorMessage && <Banner variant="error">{errorMessage}</Banner>}
+                <Button onClick={handleGenerate} disabled={busy}>
+                  生成日报
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      <div className="report-view__section">
+        <ReportHistory refreshKey={historyRefreshKey} />
+      </div>
     </section>
   )
 }

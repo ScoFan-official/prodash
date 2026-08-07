@@ -1783,3 +1783,115 @@
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
+
+.report-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+@media (min-width: 1024px) {
+  .report-view {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    align-items: start;
+  }
+}
+
+.report-view__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.report-date-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.report-extra__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.report-extra__field label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.report-extra__field textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-3);
+  background: var(--bg-default);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-default);
+  font-size: var(--text-sm);
+  resize: vertical;
+}
+
+.report-extra__field textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.report-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.report-result {
+  background: var(--bg-default);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  overflow-x: auto;
+}
+
+.report-result pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.table-container {
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.report-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  min-width: 600px;
+}
+
+.report-history-table th,
+.report-history-table td {
+  padding: var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.report-history-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  background: var(--bg-default);
+}
+
+.report-history-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+.report-view__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}

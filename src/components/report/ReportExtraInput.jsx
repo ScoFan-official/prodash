@@ -10,13 +10,15 @@ export default function ReportExtraInput({ value, onChange }) {
   return (
     <div className="report-extra-input">
       {FIELDS.map(({ key, label }) => (
-        <label key={key} className="report-extra-field">
-          {label}
+        <div key={key} className="report-extra__field">
+          <label htmlFor={`report-extra-${key}`}>{label}</label>
           <textarea
+            id={`report-extra-${key}`}
+            className="input--textarea"
             value={value[key] || ''}
             onChange={(e) => onChange({ ...value, [key]: e.target.value })}
           />
-        </label>
+        </div>
       ))}
     </div>
   )
