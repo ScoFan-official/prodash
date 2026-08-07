@@ -332,3 +332,14 @@ describe('saveExtra（机制 b）', () => {
     expect(result.report.status).toBe('published');
   });
 });
+
+it('buildReportSource 附带 source/sourceLeader', async () => {
+  const repos = createInMemoryRepos();
+  await repos.tasks.create({
+    title: '领导任务', important: true, urgent: true,
+    dingtalkTaskId: 'dt-1', source: 'dingtalk', sourceLeader: '闫佳琪',
+    status: 'completed', completedAt: '2026-08-07T09:00:00.000Z', syncWriteback: 'none',
+  });
+  const source = await buildReportSource(repos, { date: '2026-08-07' });
+  expect(source.completedTodos[0]).toMatchObject({ source: 'dingtalk', sourceLeader: '闫佳琪' });
+});

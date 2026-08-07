@@ -38,6 +38,8 @@ export async function buildReportSource(repos, { date, includeDeleted = false })
       title: t.title || '已删除任务',
       important: !!t.important,
       urgent: !!t.urgent,
+      source: t.source ?? 'local',
+      sourceLeader: t.sourceLeader ?? null,
       humanMs: a.humanMs,
       agentMs: a.agentMs,
     };
@@ -83,6 +85,9 @@ function buildDifyInputs(source, extraWork) {
   const e = { ...EMPTY_EXTRA, ...(extraWork || {}) };
   const withTime = (t) => ({
     ...t,
+    source: t.source ?? 'local',
+    // snake_case：Dify 变量约定格式（spec §7），不要改成驼峰
+    source_leader: t.sourceLeader ?? null,
     // 预格式化为可读文本，LLM 直接引用，不自行换算
     humanTime: formatDuration(t.humanMs),
     agentTime: formatDuration(t.agentMs),

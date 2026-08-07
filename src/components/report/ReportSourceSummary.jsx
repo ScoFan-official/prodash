@@ -10,12 +10,16 @@ function formatMs(ms) {
 
 export default function ReportSourceSummary({ source }) {
   const total = source.completedTodos.length + source.pendingTodos.length
+  const dingtalkCount =
+    source.completedTodos.filter((t) => t.source === 'dingtalk').length +
+    source.pendingTodos.filter((t) => t.source === 'dingtalk').length
   return (
     <div className="report-source-summary">
       <p>
         当天共 {total} 个任务，已完成 {source.completedTodos.length} 个，未完成{' '}
         {source.pendingTodos.length} 个
       </p>
+      {dingtalkCount > 0 && <p>含钉钉任务 {dingtalkCount} 条</p>}
       <p>
         双轨总时长：人工 {formatMs(source.totalHumanMs)}，AI{' '}
         {formatMs(source.totalAgentMs)}
