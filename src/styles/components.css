@@ -1670,3 +1670,29 @@
     justify-content: space-between;
   }
 }
+
+.active-timers-bar {
+  margin-bottom: var(--space-4);
+}
+
+.active-timers-bar__toggle {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.active-timers-bar__content {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.active-timer-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-default);
+  border-radius: var(--radius-md);
+}

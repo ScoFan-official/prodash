@@ -1,4 +1,9 @@
 import { useState } from 'react'
+import { ChevronDown, ChevronUp, Square } from 'lucide-react'
+import cn from 'classnames'
+import Card from './primitives/Card'
+import Button from './primitives/Button'
+import IconButton from './primitives/IconButton'
 import { getElapsedMs, DELETED_TODO_LABEL } from '../lib/timeStore'
 import { formatDuration } from '../lib/timeStats'
 
@@ -40,9 +45,9 @@ export default function ActiveTimersBar({ active, todos, onStop }) {
 
   if (items.length === 0) {
     return (
-      <div className="active-timers-bar active-timers-bar--empty">
+      <Card className="active-timers-bar active-timers-bar--empty">
         <span className="active-timers-bar__summary">暂无计时任务</span>
-      </div>
+      </Card>
     )
   }
 
@@ -52,10 +57,10 @@ export default function ActiveTimersBar({ active, todos, onStop }) {
     .join('、')
 
   return (
-    <div className={`active-timers-bar${expanded ? ' is-expanded' : ''}`}>
-      <button
-        type="button"
-        className="active-timers-bar__summary"
+    <Card className={cn('active-timers-bar', { 'is-expanded': expanded })}>
+      <Button
+        variant="ghost"
+        className="active-timers-bar__summary active-timers-bar__toggle"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         aria-label={expanded ? '收起计时详情' : '展开计时详情'}
@@ -70,15 +75,17 @@ export default function ActiveTimersBar({ active, todos, onStop }) {
           <span className="active-timers-bar__names"> · {shortNames}{runningItems.length > 2 && ' 等'}</span>
         )}
         <span className="active-timers-bar__chevron" aria-hidden="true">
-          {expanded ? '▲' : '▼'}
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </span>
-      </button>
+      </Button>
       {expanded && (
-        <ul className="active-timers-bar__details">
+        <div className="active-timers-bar__details active-timers-bar__content">
           {items.map((item) => (
-            <li
+            <div
               key={item.key}
-              className={`active-timers-bar__item${item.running ? ' is-running' : ''}`}
+              className={cn('active-timers-bar__item', 'active-timer-item', {
+                'is-running': item.running,
+              })}
             >
               <span className="active-timers-bar__title">{item.title}</span>
               <span className="active-timers-bar__status" aria-label={item.running ? '运行中' : '已暂停'}>
@@ -87,19 +94,17 @@ export default function ActiveTimersBar({ active, todos, onStop }) {
               <span className="active-timers-bar__track">{TRACK_LABELS[item.track]}</span>
               <span className="active-timers-bar__time">{formatDuration(item.elapsedMs)}</span>
               {onStop && (
-                <button
-                  type="button"
-                  className="active-timers-bar__stop"
+                <IconButton
+                  icon={Square}
+                  label={`停止 ${item.title} 的${TRACK_LABELS[item.track]}计时`}
                   onClick={() => onStop(item.todoId, item.track)}
-                  aria-label={`停止 ${item.title} 的${TRACK_LABELS[item.track]}计时`}
-                >
-                  停止
-                </button>
+                  className="active-timers-bar__stop"
+                />
               )}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
-    </div>
+    </Card>
   )
 }
