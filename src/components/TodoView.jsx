@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTaskTimers } from '../hooks/useTaskTimers'
-import { getTasks, createTask, updateTask, deleteTask } from '../api/client'
+import { getTasks, createTask, updateTask, deleteTask, syncTodos, getTodoSyncStatus } from '../api/client'
 import TodoViewToggle from './TodoViewToggle'
 import TodoInput from './TodoInput'
 import TodoList from './TodoList'
@@ -33,6 +33,9 @@ export default function TodoView() {
   const [loadError, setLoadError] = useState(false)
   const [view, setView] = useState('list')
   const [deleteBlockedId, setDeleteBlockedId] = useState(null)
+  const [syncState, setSyncState] = useState('idle') // idle | syncing | success | failed
+  const [syncMessage, setSyncMessage] = useState('')
+  const [lastSyncAt, setLastSyncAt] = useState(null)
   const timers = useTaskTimers()
 
   // mount 时从 API 拉取待办，过滤软删除任务。
@@ -106,6 +109,46 @@ export default function TodoView() {
     }
   }, [deleteBlockedId, timers.hasRunning])
 
+  function formatSyncTime(iso) {
+    const d = new Date(iso)
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('zh-CN')
+  }
+
+  // 页面加载触发一次同步（服务端 <2 分钟节流，成功静默）；读取上次同步时间；失败仅提示不阻塞。
+  useEffect(() => {
+    let cancelled = false
+    syncTodos().catch(() => {
+      if (!cancelled) setSyncState('failed')
+    })
+    getTodoSyncStatus()
+      .then((s) => {
+        if (!cancelled && s?.syncedAt) setLastSyncAt(s.syncedAt)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  function handleSync() {
+    setSyncState('syncing')
+    setSyncMessage('')
+    syncTodos()
+      .then((r) => {
+        setSyncState('success')
+        if (r?.inFlight) {
+          setSyncMessage('已有同步正在进行')
+        } else {
+          setSyncMessage(`同步成功，导入 ${r?.imported ?? 0} / 更新 ${r?.updated ?? 0}`)
+          if (r?.syncedAt) setLastSyncAt(r.syncedAt)
+        }
+      })
+      .catch(() => {
+        setSyncState('failed')
+        setSyncMessage('钉钉同步失败，请稍后重试')
+      })
+  }
+
   return (
     <section className="todo-view">
       <ActiveTimersBar
@@ -114,6 +157,22 @@ export default function TodoView() {
         onStop={timerCallbacks.stop}
       />
       <TodoViewToggle view={view} onViewChange={setView} />
+      <div className="todo-sync-bar">
+        <button type="button" onClick={handleSync} disabled={syncState === 'syncing'}>
+          {syncState === 'syncing' ? '同步中…' : '同步钉钉待办'}
+        </button>
+        {lastSyncAt && <span className="todo-sync-last">上次同步：{formatSyncTime(lastSyncAt)}</span>}
+      </div>
+      {syncState === 'success' && syncMessage && (
+        <p className="sync-message" role="status">
+          {syncMessage}
+        </p>
+      )}
+      {syncState === 'failed' && (
+        <p className="save-error" role="alert">
+          {syncMessage}
+        </p>
+      )}
       <TodoInput onAdd={addTodo} />
       {saveError && (
         <p className="save-error" role="alert">

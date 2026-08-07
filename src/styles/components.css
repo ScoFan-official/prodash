@@ -1406,3 +1406,19 @@
   color: #b26a00;
   font-size: 12px;
 }
+
+/* 待办视图：钉钉同步按钮与状态 */
+.todo-sync-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.todo-sync-last {
+  font-size: 12px;
+  color: var(--muted, #8a8f98);
+}
+.sync-message {
+  color: #2f9e44;
+  font-size: 13px;
+}

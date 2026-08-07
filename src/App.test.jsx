@@ -17,6 +17,8 @@ const { mockTasks, apiMocks } = vi.hoisted(() => {
     postTimeEvent: vi.fn(),
     getActiveSessions: vi.fn(),
     getRecords: vi.fn(),
+    syncTodos: vi.fn(),
+    getTodoSyncStatus: vi.fn(),
   }
   return { mockTasks: tasks, apiMocks }
 })
@@ -47,6 +49,14 @@ function installApiDefaults() {
   apiMocks.postTimeEvent.mockResolvedValue({})
   apiMocks.getActiveSessions.mockResolvedValue([])
   apiMocks.getRecords.mockResolvedValue([])
+  // TodoView mount 会静默触发同步 + 读取同步状态（Task 10），默认 mock 使其静默成功。
+  apiMocks.syncTodos.mockResolvedValue({
+    syncedAt: '2026-08-07T12:00:00.000Z', imported: 0, updated: 0,
+    softDeleted: 0, writeback: { retried: 0, pending: 0 },
+  })
+  apiMocks.getTodoSyncStatus.mockResolvedValue({
+    syncedAt: null, lastResult: null, profile: 'corp:user', inFlight: false, configured: true,
+  })
 }
 
 describe('App 外壳', () => {

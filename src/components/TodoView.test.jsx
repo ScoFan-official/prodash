@@ -13,6 +13,8 @@ const { mockTasks, apiMocks } = vi.hoisted(() => {
     postTimeEvent: vi.fn(),
     getActiveSessions: vi.fn(),
     getRecords: vi.fn(),
+    syncTodos: vi.fn(),
+    getTodoSyncStatus: vi.fn(),
   }
   return { mockTasks: tasks, apiMocks }
 })
@@ -60,6 +62,14 @@ function installApiDefaults() {
   apiMocks.postTimeEvent.mockResolvedValue({})
   apiMocks.getActiveSessions.mockResolvedValue([])
   apiMocks.getRecords.mockResolvedValue([])
+  // 页面加载时 TodoView 会静默触发一次同步 + 读取同步状态；默认 mock 使其静默成功。
+  apiMocks.syncTodos.mockResolvedValue({
+    syncedAt: '2026-08-07T12:00:00.000Z', imported: 0, updated: 0,
+    softDeleted: 0, writeback: { retried: 0, pending: 0 },
+  })
+  apiMocks.getTodoSyncStatus.mockResolvedValue({
+    syncedAt: null, lastResult: null, profile: 'corp:user', inFlight: false, configured: true,
+  })
 }
 
 async function addTodo(text) {
@@ -311,5 +321,68 @@ describe('TodoView 计时双轨控制（集成）', () => {
     expect(screen.getByRole('button', { name: '开始人工计时' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '开始Agent计时' })).toBeInTheDocument()
     await flushAsync()
+  })
+})
+
+// 钉钉同步按钮与状态：独立 describe 保持与其余用例相同的 beforeEach 隔离
+// （计划原文为顶层裸 it，但本文件惯例是 describe + beforeEach(clearAllMocks + installApiDefaults)，
+// 裸 it 会继承前序用例的 mock 实现导致不稳定）。
+describe('TodoView 钉钉同步', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    installApiDefaults()
+  })
+
+  it('点击同步按钮触发 syncTodos 并显示成功信息', async () => {
+    render(<TodoView />)
+    apiMocks.syncTodos.mockResolvedValue({
+      syncedAt: '2026-08-07T12:00:00.000Z', imported: 3, updated: 5,
+      softDeleted: 0, writeback: { retried: 0, pending: 0 },
+    })
+    await userEvent.setup().click(screen.getByRole('button', { name: /同步钉钉待办/ }))
+    expect(apiMocks.syncTodos).toHaveBeenCalled()
+    expect(await screen.findByText('同步成功，导入 3 / 更新 5')).toBeInTheDocument()
+  })
+
+  it('同步中显示 loading 态（按钮禁用）', async () => {
+    let resolve
+    apiMocks.syncTodos.mockImplementation(
+      () => new Promise((r) => { resolve = r }),
+    )
+    render(<TodoView />)
+    const btn = screen.getByRole('button', { name: /同步钉钉待办/ })
+    await userEvent.setup().click(btn)
+    expect(btn).toBeDisabled()
+    expect(screen.getByText(/同步中/)).toBeInTheDocument()
+    // 在 async act 内 resolve：promise 的 .then 走微任务队列，同步 act 不会冲刷微任务，
+    // 需 async act 让 success 状态更新在测试作用域内 flush，避免 act 警告。
+    await act(async () => {
+      resolve({
+        syncedAt: '2026-08-07T12:00:00.000Z', imported: 0, updated: 0,
+        softDeleted: 0, writeback: { retried: 0, pending: 0 },
+      })
+    })
+  })
+
+  it('同步失败显示错误提示且不阻塞本地操作', async () => {
+    render(<TodoView />)
+    apiMocks.syncTodos.mockRejectedValue(new Error('钉钉同步失败，请稍后重试'))
+    await userEvent.setup().click(screen.getByRole('button', { name: /同步钉钉待办/ }))
+    expect(await screen.findByText('钉钉同步失败，请稍后重试')).toBeInTheDocument()
+    // 本地操作仍可用：添加待办后勾选完成仍正常调用 updateTask。
+    // （计划原用例直接点 getAllByRole('checkbox')[0]，此时 TodoInput 的「重要？」在最前、
+    // 且无任何任务，点了不会触发 updateTask——改为先建任务再勾「标记完成」。）
+    const user = await addTodo('本地任务')
+    await user.click(screen.getByRole('checkbox', { name: '标记完成' }))
+    expect(apiMocks.updateTask).toHaveBeenCalled()
+  })
+
+  it('显示上次同步时间', async () => {
+    apiMocks.getTodoSyncStatus.mockResolvedValue({
+      syncedAt: '2026-08-07T12:00:00.000Z', lastResult: null,
+      profile: 'corp:user', inFlight: false, configured: true,
+    })
+    render(<TodoView />)
+    expect(await screen.findByText(/上次同步/)).toBeInTheDocument()
   })
 })
