@@ -185,7 +185,7 @@ export default function TodoView() {
       />
       <SegmentedControl value={view} onValueChange={setView} options={VIEW_OPTIONS} />
       <div className="todo-sync-bar">
-        <button type="button" onClick={handleSync} disabled={syncState === 'syncing'}>
+        <button type="button" className="btn btn--ghost" onClick={handleSync} disabled={syncState === 'syncing'}>
           {syncState === 'syncing' ? '同步中…' : '同步钉钉待办'}
         </button>
         {lastSyncAt && <span className="todo-sync-last">上次同步：{formatSyncTime(lastSyncAt)}</span>}

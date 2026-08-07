@@ -63,19 +63,6 @@ li {
   flex: 1;
 }
 
-.timer-track {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
 /* =========================================================
    顶部活动计时条
    ========================================================= */
@@ -997,6 +984,7 @@ li {
   display: flex;
   flex-direction: column;
   min-height: 200px;
+  border-top: 4px solid var(--quadrant-color);
 }
 
 .quadrant-cell__header {
@@ -1005,7 +993,7 @@ li {
   justify-content: space-between;
   padding-bottom: var(--space-3);
   margin-bottom: var(--space-3);
-  border-bottom: 2px solid var(--quadrant-color);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .quadrant-cell__header h3 {
