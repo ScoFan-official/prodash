@@ -25,6 +25,11 @@ describe('parseDwsJson / extractListPayload / mapTodoItem', () => {
     expect(extractListPayload({ list: [] })).toEqual({ items: [], hasMore: false });
   });
 
+  it('extractListPayload 兼容 dws +get-my-tasks 实际返回（根级 todos）', () => {
+    expect(extractListPayload({ count: 1, todos: [{ taskId: '55949145596', subject: 'A' }] }))
+      .toEqual({ items: [{ taskId: '55949145596', subject: 'A' }], hasMore: false });
+  });
+
   it('mapTodoItem 归一化字段（驼峰/下划线别名）', () => {
     expect(mapTodoItem({ taskId: 't1', subject: 'A', isDone: true, dueTime: '2026-08-08T10:00:00.000Z', bizTag: 'certify_todo' }))
       .toEqual({ taskId: 't1', subject: 'A', isDone: true, dueTime: '2026-08-08T10:00:00.000Z', bizTag: 'certify_todo' });
@@ -45,6 +50,7 @@ describe('listMyTasks', () => {
     expect(execFile.mock.calls[0][0]).toBe('node.exe');
     expect(execFile.mock.calls[0][1]).toEqual(expect.arrayContaining([
       'todo', '+get-my-tasks', '--role-types', 'executor', '--status', 'false',
+      '--size', '20', '--page', '1',
       '--profile', 'corp:user', '--format', 'json',
     ]));
     expect(execFile.mock.calls[1][1]).toContain('--page');
@@ -81,6 +87,35 @@ describe('getTaskDetail', () => {
       source: 'certify_todo',
     });
     expect(execFile.mock.calls[0][1]).toEqual(expect.arrayContaining(['todo', 'task', 'get', '--task-id', 'dt-1', '--profile', 'corp:user']));
+  });
+
+  it('兼容 dws 真实详情结构 result.todoDetailModel（含 creatorInfo）', async () => {
+    const execFile = vi.fn().mockResolvedValue({
+      stdout: JSON.stringify({
+        success: true,
+        result: {
+          todoDetailModel: {
+            subject: '真实结构任务',
+            creatorInfo: { name: '齐浩南', userId: 260593855 },
+            dueTime: 1786096800000,
+            executorInfos: [],
+            isDone: false,
+            priority: 30,
+            bizTag: 'teambition',
+            source: 'teambition',
+          },
+        },
+      }),
+    });
+    const client = makeClient(execFile);
+    const detail = await client.getTaskDetail({ taskId: 'dt-2' });
+    expect(detail).toMatchObject({
+      subject: '真实结构任务',
+      creatorInfo: { name: '齐浩南', userId: 260593855 },
+      isDone: false,
+      bizTag: 'teambition',
+      source: 'teambition',
+    });
   });
 });
 

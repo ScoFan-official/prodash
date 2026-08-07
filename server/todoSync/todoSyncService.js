@@ -141,6 +141,19 @@ export function createTodoSyncService({ client, repos, profile = '', now = () =>
     }
 
     let updated = 0;
+    // 已存在但本地缺来源领导的任务：补取详情（详情失败留空不阻塞），复用并发限 5。
+    const missingLeaderTargets = items.filter((i) => {
+      const local = byDingtalkId.get(i.taskId);
+      return local && !local.sourceLeader;
+    });
+    const leaderDetails = await Promise.all(
+      missingLeaderTargets.map((item) =>
+        limit(() => client.getTaskDetail({ taskId: item.taskId, profile }).catch(() => null))
+      )
+    );
+    const leaderByTaskId = new Map(
+      missingLeaderTargets.map((item, idx) => [item.taskId, leaderDetails[idx]])
+    );
     for (const item of items) {
       const local = byDingtalkId.get(item.taskId);
       if (!local) continue;
@@ -151,6 +164,9 @@ export function createTodoSyncService({ client, repos, profile = '', now = () =>
         dueTime: item.dueTime ?? local.dueTime,
         syncOrigin: item.bizTag ?? local.syncOrigin,
       };
+      if (!local.sourceLeader) {
+        patch.sourceLeader = leaderByTaskId.get(item.taskId)?.creatorInfo?.name ?? null;
+      }
       // pending 保护：本地 completed + 待回写 → 保留本地状态不回退
       const pendingProtected = local.status === 'completed' && local.syncWriteback === 'pending';
       if (!pendingProtected) {

@@ -8,7 +8,8 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_TIMEOUT_MS = 60000;
-const DEFAULT_PAGE_SIZE = 100;
+// dws 实测：--size 超过 20 时静默返回空列表（count:0），仅 20（默认）可靠 → 固定用 20。
+const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGES = 1000; // 防死循环上限
 
 /** 容错解析 dws stdout：整体 JSON.parse 失败则取首个 { 到末尾 } 再解析（兼容前缀文案）。 */
@@ -30,10 +31,10 @@ export function parseDwsJson(stdout) {
   }
 }
 
-/** 从列表响应中 lenient 提取 { items, hasMore }（兼容 data.list / data.items / 根级 list）。 */
+/** 从列表响应中 lenient 提取 { items, hasMore }（兼容 data.list / data.items / 根级 list / todos）。 */
 export function extractListPayload(root) {
   const data = root?.data && typeof root.data === 'object' ? root.data : root;
-  const raw = data?.list ?? data?.items ?? data?.result ?? root?.list ?? [];
+  const raw = data?.list ?? data?.items ?? data?.result ?? data?.todos ?? root?.list ?? root?.todos ?? [];
   const items = Array.isArray(raw) ? raw : [];
   const hasMore = Boolean(data?.hasMore ?? data?.has_more ?? false);
   return { items, hasMore };
@@ -121,7 +122,9 @@ export class DwsTodoClient {
         '--format', 'json',
       ])) ?? {};
     const data = root?.data && typeof root.data === 'object' ? root.data : root;
-    const detail = data?.task ?? data?.detail ?? data?.todo ?? data;
+    // dws 详情真实结构：{ success, result: { todoDetailModel: { creatorInfo, ... } } }
+    const detail =
+      data?.task ?? data?.detail ?? data?.todo ?? data?.result?.todoDetailModel ?? data?.result ?? data;
     const creator = detail?.creatorInfo ?? detail?.creator ?? {};
     return {
       subject: pick(detail, ['subject', 'title', 'content']) ?? '',

@@ -11,7 +11,8 @@ function makeCtx({ clientOverrides = {} } = {}) {
   const repos = createInMemoryRepos();
   const client = {
     listMyTasks: vi.fn(),
-    getTaskDetail: vi.fn(),
+    // 默认空详情（详情失败留空语义）；个别测试按需覆盖
+    getTaskDetail: vi.fn().mockResolvedValue({}),
     setTaskDone: vi.fn().mockResolvedValue({}),
     ...clientOverrides,
   };
@@ -75,6 +76,26 @@ describe('syncFromDingtalk upsert', () => {
     expect(t.syncOrigin).toBe('attendance');
     expect(t.status).toBe('active');
     expect(ctx.client.getTaskDetail).not.toHaveBeenCalled();
+  });
+
+  it('已存在任务缺来源领导：补取详情回填 sourceLeader', async () => {
+    const ctx = makeCtx();
+    const created = await ctx.repos.tasks.create({
+      title: 'x', important: true, urgent: true,
+      dingtalkTaskId: 'dt-1', source: 'dingtalk', sourceLeader: null,
+      dueTime: null, syncOrigin: null, syncWriteback: 'none', status: 'active',
+    });
+    ctx.client.listMyTasks
+      .mockResolvedValueOnce([{ taskId: 'dt-1', subject: 'x', isDone: false, dueTime: null, bizTag: null }])
+      .mockResolvedValueOnce([]);
+    ctx.client.getTaskDetail.mockResolvedValue({
+      subject: 'x', creatorInfo: { name: '闫佳琪', userId: 'u1' },
+      dueTime: null, executorInfos: [], isDone: false, priority: null, bizTag: null, source: null,
+    });
+    await ctx.service.syncFromDingtalk();
+    const t = await ctx.repos.tasks.get(created.id);
+    expect(t.sourceLeader).toBe('闫佳琪');
+    expect(ctx.client.getTaskDetail).toHaveBeenCalledWith({ taskId: 'dt-1', profile: 'corp:user' });
   });
 
   it('pending 保护：completed+pending 的任务不被轮询改回 active', async () => {
