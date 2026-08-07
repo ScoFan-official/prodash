@@ -74,39 +74,44 @@ describe('App 外壳', () => {
   test('默认停在待办页', async () => {
     await renderApp()
     expect(screen.getByRole('heading', { name: '效率工作台' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: '待办' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('button', { name: '待办' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByPlaceholderText(/添加待办/)).toBeInTheDocument()
   })
 
   test('不再显示番茄钟 Tab', async () => {
     await renderApp()
-    expect(screen.queryByRole('tab', { name: '番茄钟' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '番茄钟' })).not.toBeInTheDocument()
+    expect(screen.queryByText('番茄钟')).not.toBeInTheDocument()
   })
 
-  test('Tab 数量为 4（待办/日报/笔记/Token流水）', async () => {
+  test('导航为 2 个可用项 + 2 个禁用项（笔记/Token流水 带徽标）', async () => {
     await renderApp()
-    const nav = screen.getByRole('tablist', { name: '功能导航' })
-    expect(within(nav).getAllByRole('tab')).toHaveLength(4)
+    const nav = screen.getByRole('navigation', { name: '主导航' })
+    // 可用导航项：待办 / 日报
+    expect(within(nav).getAllByRole('button')).toHaveLength(2)
+    // 禁用项以 span 呈现，不可点击
+    expect(within(nav).queryByRole('button', { name: '笔记' })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('button', { name: 'Token流水' })).not.toBeInTheDocument()
+    expect(within(nav).getByText('笔记')).toBeInTheDocument()
+    expect(within(nav).getByText('Token流水')).toBeInTheDocument()
+    expect(within(nav).getAllByText('即将上线')).toHaveLength(2)
   })
 
-  test('点击日报 Tab 后渲染 ReportView', async () => {
+  test('点击日报导航项后渲染 ReportView', async () => {
     await renderApp()
     const user = userEvent.setup()
-    await user.click(screen.getByRole('tab', { name: '日报' }))
+    await user.click(screen.getByRole('button', { name: '日报' }))
     expect(screen.getByTestId('report-view')).toBeInTheDocument()
   })
 
-  test('笔记/Token流水占位页可切换并显示敬请期待', async () => {
+  test('笔记/Token流水为禁用态，不可切换', async () => {
     await renderApp()
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('tab', { name: '笔记' }))
-    expect(screen.getByRole('heading', { name: '笔记' })).toBeInTheDocument()
-    expect(screen.getByText('敬请期待')).toBeInTheDocument()
-    expect(screen.queryByPlaceholderText(/添加待办/)).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('tab', { name: 'Token流水' }))
-    expect(screen.getByRole('heading', { name: 'Token流水' })).toBeInTheDocument()
-    expect(screen.getByText('敬请期待')).toBeInTheDocument()
+    // 禁用项不是按钮，无法点击导航
+    expect(screen.queryByRole('button', { name: '笔记' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Token流水' })).not.toBeInTheDocument()
+    // 仍在待办页，占位视图不再渲染
+    expect(screen.getByPlaceholderText(/添加待办/)).toBeInTheDocument()
+    expect(screen.queryByText('敬请期待')).not.toBeInTheDocument()
   })
 
   test('切换回待办后数据仍在（API 数据源重新拉取）', async () => {
@@ -116,10 +121,10 @@ describe('App 外壳', () => {
     await user.click(screen.getByRole('button', { name: '添加' }))
     expect(await screen.findByText('跨页数据')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('tab', { name: '笔记' }))
+    await user.click(screen.getByRole('button', { name: '日报' }))
     expect(screen.queryByPlaceholderText(/添加待办/)).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('tab', { name: '待办' }))
+    await user.click(screen.getByRole('button', { name: '待办' }))
     // 重新 mount TodoView 后从 API 拉取到此前创建的任务
     expect(await screen.findByText('跨页数据')).toBeInTheDocument()
     expect(apiMocks.getTasks).toHaveBeenCalledTimes(2)
