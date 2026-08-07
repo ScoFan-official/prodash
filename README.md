@@ -177,6 +177,7 @@ npm run build      # 生产构建（输出到 dist/，由后端同域托管）
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v1.1.3 | 2026-08-07 | UI 全面升级：引入 Radix headless primitives + Lucide 图标 + 四层 CSS 设计系统（tokens/base/primitives/components）；重构 App 导航为 `<nav>` + 禁用态占位 Tab；TodoItem 改为两行结构（标题行 + 双轨计时行）；待办页引入 SegmentedControl、Banner、Skeleton 组件；四象限视图使用 Card + EmptyState + token 配色；TimeStatsView 的 SVG donut 迁移至 token 颜色 + Card 包裹；日报页原生 select/table 替换为 Radix Select + Badge + styled table；响应式新增 640/768/1024px 断点；统一焦点环与 `prefers-reduced-motion` 支持；清理 legacy CSS，删除 PlaceholderView 与 theme.css；307/307 测试通过 |
 | v1.0.0 | 2026-08-06 | 架构升级：DB 为主（MySQL Docker + schema 自动初始化），localStorage 废弃清零；Node 后端（Express :8787）托管前端 H5，GitHub Pages 部署退役；事件级计时（time_events：start/pause/resume/stop）；Dify Workflow 自动生成日报（DIFY_MOCK 可全链路 mock）；发布器抽象（mock/file/dws），dws 发布到钉钉知识库「日报」板块；日报调度（REPORT_CRON 默认 21:00）+ 补充内容自动重生成 + 补发；.env 环境变量分离 |
 | v0.2.1 | 2026-08-06 | UI 调整：四象限改为经典艾森豪威尔布局（重要·紧急在右上角）、任务卡片视觉层次优化（重要·紧急更突出）、计时控件布局调整、统计视图新增象限分布与 Agent 效率两个维度；顶部 Tab「记账」更名「Token流水」（功能待后续版本开发） |
 | v0.2.0 | 2026-08-05 | 双轨任务计时（人工 / Agent 可并行）、计时持久化与恢复、顶部状态条、今日统计视图、日报导出预留接口；移除「番茄钟」Tab，计时嵌入待办页 |
