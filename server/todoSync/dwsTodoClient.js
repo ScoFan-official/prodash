@@ -96,8 +96,8 @@ export class DwsTodoClient {
         'todo', '+get-my-tasks',
         '--role-types', (Array.isArray(roleTypes) ? roleTypes : [roleTypes]).join(','),
         '--status', status,
-        '--page-size', String(pageSize),
-        '--page-num', String(page),
+        '--size', String(pageSize),
+        '--page', String(page),
         '--profile', p,
         '--format', 'json',
       ];

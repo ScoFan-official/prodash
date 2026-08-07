@@ -47,7 +47,7 @@ describe('listMyTasks', () => {
       'todo', '+get-my-tasks', '--role-types', 'executor', '--status', 'active',
       '--profile', 'corp:user', '--format', 'json',
     ]));
-    expect(execFile.mock.calls[1][1]).toContain('--page-num');
+    expect(execFile.mock.calls[1][1]).toContain('--page');
     expect(execFile.mock.calls[1][1]).toContain('2');
   });
 });
