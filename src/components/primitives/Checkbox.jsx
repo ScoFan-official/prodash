@@ -1,7 +1,7 @@
 import * as RadixCheckbox from '@radix-ui/react-checkbox';
 import { Check } from 'lucide-react';
 
-export default function Checkbox({ id, checked, onCheckedChange, disabled }) {
+export default function Checkbox({ id, checked, onCheckedChange, disabled, ...props }) {
   return (
     <RadixCheckbox.Root
       id={id}
@@ -9,6 +9,7 @@ export default function Checkbox({ id, checked, onCheckedChange, disabled }) {
       checked={checked}
       onCheckedChange={onCheckedChange}
       disabled={disabled}
+      {...props}
     >
       <RadixCheckbox.Indicator className="checkbox__indicator">
         <Check size={14} strokeWidth={3} />
