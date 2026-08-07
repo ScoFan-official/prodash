@@ -1696,3 +1696,9 @@
   background: var(--bg-default);
   border-radius: var(--radius-md);
 }
+
+.todo-view__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}

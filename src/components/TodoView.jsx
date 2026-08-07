@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useTaskTimers } from '../hooks/useTaskTimers'
 import { getTasks, createTask, updateTask, deleteTask, syncTodos, getTodoSyncStatus } from '../api/client'
-import TodoViewToggle from './TodoViewToggle'
+import SegmentedControl from './primitives/SegmentedControl'
+import Banner from './primitives/Banner'
+import Skeleton from './primitives/Skeleton'
 import TodoInput from './TodoInput'
 import TodoList from './TodoList'
 import QuadrantView from './QuadrantView'
 import ActiveTimersBar from './ActiveTimersBar'
 import TimeStatsView from './TimeStatsView'
+
+const VIEW_OPTIONS = [
+  { value: 'list', label: '列表' },
+  { value: 'quadrant', label: '四象限' },
+  { value: 'stats', label: '统计' },
+]
 
 // 服务端任务 → UI 形状。id 保持服务端数字 BIGINT；
 // 与 timeStore 的 todoId（String(taskId)）比较时统一 String()（见 useTaskTimers）。
@@ -29,6 +37,7 @@ function normalizeTask(task) {
 
 export default function TodoView() {
   const [todos, setTodos] = useState([])
+  const [loading, setLoading] = useState(true)
   const [saveError, setSaveError] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [view, setView] = useState('list')
@@ -46,11 +55,13 @@ export default function TodoView() {
         if (cancelled) return
         setTodos((tasks ?? []).filter((t) => t.status !== 'deleted').map(normalizeTask))
         setLoadError(false)
+        setLoading(false)
       })
       .catch(() => {
         if (cancelled) return
         setTodos([])
         setLoadError(true)
+        setLoading(false)
       })
     return () => {
       cancelled = true
@@ -172,7 +183,7 @@ export default function TodoView() {
         todos={todos}
         onStop={timerCallbacks.stop}
       />
-      <TodoViewToggle view={view} onViewChange={setView} />
+      <SegmentedControl value={view} onValueChange={setView} options={VIEW_OPTIONS} />
       <div className="todo-sync-bar">
         <button type="button" onClick={handleSync} disabled={syncState === 'syncing'}>
           {syncState === 'syncing' ? '同步中…' : '同步钉钉待办'}
@@ -185,32 +196,30 @@ export default function TodoView() {
         </p>
       )}
       {syncState === 'failed' && syncMessage && (
-        <p className="save-error" role="alert">
-          {syncMessage}
-        </p>
+        <Banner variant="error">{syncMessage}</Banner>
       )}
       <TodoInput onAdd={addTodo} />
       {saveError && (
-        <p className="save-error" role="alert">
-          保存失败，数据可能不会留存
-        </p>
+        <Banner variant="error">保存失败，数据可能不会留存</Banner>
       )}
       {timers.saveError && (
-        <p className="save-error" role="alert">
-          计时同步失败，刷新后可能丢失
-        </p>
+        <Banner variant="error">计时同步失败，刷新后可能丢失</Banner>
       )}
       {(loadError || timers.loadError) && (
-        <p className="save-error" role="alert">
+        <Banner variant="error">
           {loadError ? '任务数据加载失败，可能不是最新状态' : '计时数据加载失败，可能不是最新状态'}
-        </p>
+        </Banner>
       )}
       {deleteBlockedId && (
-        <p className="delete-blocked" role="alert">
-          有计时正在运行，请先停止或暂停后再删除
-        </p>
+        <Banner variant="error">有计时正在运行，请先停止或暂停后再删除</Banner>
       )}
-      {view === 'list' ? (
+      {loading ? (
+        <div className="todo-view__loading">
+          <Skeleton width="100%" height={56} />
+          <Skeleton width="100%" height={56} />
+          <Skeleton width="100%" height={56} />
+        </div>
+      ) : view === 'list' ? (
         <TodoList
           todos={todos}
           onToggle={toggleTodo}
