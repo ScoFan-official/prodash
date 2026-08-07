@@ -1,0 +1,54 @@
+:root {
+  --bg-default: #0B0D12;
+  --bg-surface: #14171F;
+  --bg-surface-elevated: #1A1E28;
+  --bg-hover: rgba(127, 184, 255, 0.08);
+  --text-default: #F0F2F7;
+  --text-muted: #8F98AA;
+  --text-inverse: #0B0D12;
+  --border-default: #2C313E;
+  --border-strong: #3D4454;
+  --accent: #7FB8FF;
+  --accent-hover: #9EC9FF;
+  --danger: #FF6B6B;
+  --danger-hover: #FF8A8A;
+  --success: #66E6B0;
+  --warning: #F5B75A;
+  --q1: #FF7A6B;
+  --q2: #66E6B0;
+  --q3: #F5B75A;
+  --q4: #B892FF;
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.24);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.32);
+
+  --focus-ring: 0 0 0 2px var(--bg-default), 0 0 0 4px var(--accent);
+
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-dropdown: 20;
+  --z-overlay: 30;
+  --z-dialog: 40;
+  --z-toast: 50;
+}
