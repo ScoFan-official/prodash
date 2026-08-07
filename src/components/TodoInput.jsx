@@ -1,45 +1,56 @@
-import { useState } from 'react'
+import { useState } from 'react';
+import Button from './primitives/Button';
+import Checkbox from './primitives/Checkbox';
+import Card from './primitives/Card';
 
 export default function TodoInput({ onAdd }) {
-  const [text, setText] = useState('')
-  const [important, setImportant] = useState(false)
-  const [urgent, setUrgent] = useState(false)
+  const [title, setTitle] = useState('');
+  const [important, setImportant] = useState(false);
+  const [urgent, setUrgent] = useState(false);
 
-  function handleAdd() {
-    onAdd(text, important, urgent)
-    setText('')
+  function handleSubmit(e) {
+    e.preventDefault();
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    // 保持既有 onAdd(text, important, urgent) 位置参数契约（TodoView.addTodo 原样消费）。
+    onAdd(trimmed, important, urgent);
+    setTitle('');
+    setImportant(false);
+    setUrgent(false);
   }
 
   return (
-    <div className="todo-input">
-      <input
-        type="text"
-        value={text}
-        placeholder="添加待办…"
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') handleAdd()
-        }}
-      />
-      <label>
+    <Card className="todo-input">
+      <form onSubmit={handleSubmit} className="todo-input__form">
         <input
-          type="checkbox"
-          checked={important}
-          onChange={(e) => setImportant(e.target.checked)}
+          type="text"
+          className="todo-input__field"
+          placeholder="添加待办…"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
         />
-        重要？
-      </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={urgent}
-          onChange={(e) => setUrgent(e.target.checked)}
-        />
-        紧急？
-      </label>
-      <button type="button" onClick={handleAdd} disabled={!text.trim()}>
-        添加
-      </button>
-    </div>
-  )
+        <div className="todo-input__switches">
+          <label className="todo-input__switch">
+            <Checkbox
+              id="todo-important"
+              checked={important}
+              onCheckedChange={setImportant}
+            />
+            <span>重要？</span>
+          </label>
+          <label className="todo-input__switch">
+            <Checkbox
+              id="todo-urgent"
+              checked={urgent}
+              onCheckedChange={setUrgent}
+            />
+            <span>紧急？</span>
+          </label>
+          <Button type="submit" disabled={!title.trim()}>
+            添加
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
 }
